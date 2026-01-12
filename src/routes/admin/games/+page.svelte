@@ -94,7 +94,7 @@
 					<th class="px-4 py-3">Ended</th>
 					<th class="px-4 py-3">Rounds</th>
 					<th class="px-4 py-3">Players</th>
-					<th class="px-4 py-3">Avg Turn</th>
+					<th class="px-4 py-3">Median Turn</th>
 					<th class="px-4 py-3">Winner</th>
 					<th class="px-4 py-3 text-right">Actions</th>
 				</tr>
