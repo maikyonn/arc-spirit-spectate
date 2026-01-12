@@ -1,0 +1,354 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+@plugin '@tailwindcss/typography';
+
+/* ============================================================================
+   SPECTRAL SEANCE - Halloween Theme for Arc Spirits
+   ============================================================================ */
+
+/* ==========================================================================
+   CSS Custom Properties - The Haunted Palette
+   ========================================================================== */
+:root {
+	color-scheme: dark;
+	--app-topbar-height: 64px;
+
+	/* === Core Colors === */
+	--color-void: #0a0812; /* Deepest black with purple undertone */
+	--color-obsidian: #120e1a; /* Primary background */
+	--color-shadow: #1a1325; /* Secondary background */
+	--color-crypt: #241a30; /* Elevated surfaces */
+	--color-tomb: #2d2240; /* Cards, panels */
+	--color-mist: #3d3255; /* Subtle borders */
+
+	/* === Accent Colors === */
+	--color-pumpkin: #ea580c; /* Primary orange */
+	--color-pumpkin-glow: #f97316; /* Lighter orange for hover */
+	--color-pumpkin-dim: #c2410c; /* Darker orange */
+
+	--color-specter: #a855f7; /* Haunted purple */
+	--color-specter-glow: #c084fc; /* Light purple glow */
+	--color-specter-deep: #7c3aed; /* Deep violet */
+
+	--color-toxic: #4ade80; /* Spectral green (live indicators) */
+	--color-toxic-glow: #22c55e;
+
+	--color-blood: #dc2626; /* Crimson red */
+	--color-blood-dark: #991b1b;
+
+	--color-gold: #fbbf24; /* Victory gold */
+	--color-gold-glow: #f59e0b;
+
+	/* === Text Colors === */
+	--color-bone: #faf5eb; /* Primary text - warm white */
+	--color-parchment: #e8e2d6; /* Secondary text */
+	--color-fog: #9ca3af; /* Muted text */
+	--color-whisper: #6b7280; /* Very muted */
+
+	/* === Effects === */
+	--glow-pumpkin: 0 0 20px rgba(234, 88, 12, 0.4), 0 0 40px rgba(234, 88, 12, 0.2);
+	--glow-specter: 0 0 20px rgba(168, 85, 247, 0.4), 0 0 40px rgba(168, 85, 247, 0.2);
+	--glow-toxic: 0 0 15px rgba(74, 222, 128, 0.5);
+	--glow-blood: 0 0 15px rgba(220, 38, 38, 0.4);
+
+	/* === Gradients === */
+	--gradient-haunted: linear-gradient(
+		135deg,
+		var(--color-obsidian) 0%,
+		var(--color-shadow) 50%,
+		#1a0f20 100%
+	);
+	--gradient-pumpkin: linear-gradient(
+		135deg,
+		var(--color-pumpkin) 0%,
+		var(--color-pumpkin-glow) 100%
+	);
+	--gradient-specter: linear-gradient(
+		135deg,
+		var(--color-specter-deep) 0%,
+		var(--color-specter) 100%
+	);
+}
+
+/* ==========================================================================
+   Base Styles
+   ========================================================================== */
+html {
+	background: var(--gradient-haunted);
+	background-attachment: fixed;
+}
+
+body {
+	background: transparent;
+	color: var(--color-bone);
+	font-family:
+		system-ui,
+		-apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		Roboto,
+		'Helvetica Neue',
+		Arial,
+		sans-serif;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================================
+   Scrollbar - Gothic Style
+   ========================================================================== */
+::-webkit-scrollbar {
+	width: 10px;
+	height: 10px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--color-obsidian);
+	border-left: 1px solid var(--color-mist);
+}
+
+::-webkit-scrollbar-thumb {
+	background: linear-gradient(180deg, var(--color-crypt) 0%, var(--color-tomb) 100%);
+	border-radius: 2px;
+	border: 2px solid var(--color-obsidian);
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(180deg, var(--color-tomb) 0%, var(--color-mist) 100%);
+}
+
+/* ==========================================================================
+   Focus & Selection Styles
+   ========================================================================== */
+:focus-visible {
+	outline: 2px solid var(--color-pumpkin);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+::selection {
+	background-color: rgba(234, 88, 12, 0.3);
+	color: var(--color-bone);
+}
+
+/* ==========================================================================
+   Animated Background Mist Effect
+   ========================================================================== */
+.haunted-bg::before {
+	content: '';
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background:
+		radial-gradient(ellipse at 20% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%),
+		radial-gradient(ellipse at 80% 20%, rgba(234, 88, 12, 0.06) 0%, transparent 50%),
+		radial-gradient(ellipse at 50% 50%, rgba(74, 222, 128, 0.03) 0%, transparent 70%);
+	pointer-events: none;
+	z-index: 0;
+	animation: mist-drift 20s ease-in-out infinite;
+}
+
+@keyframes mist-drift {
+	0%,
+	100% {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+	}
+	50% {
+		opacity: 0.7;
+		transform: scale(1.05) translateY(-20px);
+	}
+}
+
+/* ==========================================================================
+   Utility Classes
+   ========================================================================== */
+.glow-pumpkin {
+	box-shadow: var(--glow-pumpkin);
+}
+
+.glow-specter {
+	box-shadow: var(--glow-specter);
+}
+
+.glow-toxic {
+	box-shadow: var(--glow-toxic);
+}
+
+/* Flickering candle effect for live indicators */
+.flicker {
+	animation: flicker 3s ease-in-out infinite;
+}
+
+@keyframes flicker {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	5% {
+		opacity: 0.8;
+	}
+	10% {
+		opacity: 1;
+	}
+	15% {
+		opacity: 0.9;
+	}
+	20% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.95;
+	}
+	55% {
+		opacity: 0.85;
+	}
+	60% {
+		opacity: 1;
+	}
+}
+
+/* Eerie pulse for buttons/interactive elements */
+.eerie-pulse {
+	animation: eerie-pulse 2s ease-in-out infinite;
+}
+
+@keyframes eerie-pulse {
+	0%,
+	100% {
+		box-shadow: 0 0 5px rgba(234, 88, 12, 0.3);
+	}
+	50% {
+		box-shadow:
+			0 0 20px rgba(234, 88, 12, 0.5),
+			0 0 40px rgba(234, 88, 12, 0.2);
+	}
+}
+
+/* ==========================================================================
+   Component Overrides for Tailwind Classes - Halloween Colors
+   ========================================================================== */
+/* Override gray colors to match theme */
+.bg-gray-900 {
+	background-color: var(--color-obsidian);
+}
+.bg-gray-800 {
+	background-color: var(--color-shadow);
+}
+.bg-gray-700 {
+	background-color: var(--color-crypt);
+}
+.bg-gray-950 {
+	background-color: var(--color-void);
+}
+
+.border-gray-800 {
+	border-color: var(--color-shadow);
+}
+.border-gray-700 {
+	border-color: var(--color-crypt);
+}
+.border-gray-600 {
+	border-color: var(--color-tomb);
+}
+
+.text-gray-400 {
+	color: var(--color-fog);
+}
+.text-gray-500 {
+	color: var(--color-whisper);
+}
+.text-gray-300 {
+	color: var(--color-parchment);
+}
+
+/* Override purple to pumpkin orange for primary accents */
+.text-purple-400 {
+	color: var(--color-pumpkin-glow);
+}
+.text-purple-500 {
+	color: var(--color-pumpkin);
+}
+.border-purple-500 {
+	border-color: var(--color-pumpkin);
+}
+.bg-purple-500 {
+	background-color: var(--color-pumpkin);
+}
+.shadow-purple-500\/10 {
+	box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.1);
+}
+.shadow-purple-500\/20 {
+	box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.2);
+}
+.shadow-purple-500\/30 {
+	box-shadow: 0 4px 6px -1px rgba(234, 88, 12, 0.3);
+}
+
+.from-purple-500 {
+	--tw-gradient-from: var(--color-specter-deep);
+}
+.from-purple-600 {
+	--tw-gradient-from: var(--color-specter-deep);
+}
+.to-blue-600 {
+	--tw-gradient-to: var(--color-pumpkin);
+}
+.to-indigo-600 {
+	--tw-gradient-to: var(--color-pumpkin-dim);
+}
+.to-blue-700 {
+	--tw-gradient-to: var(--color-pumpkin-dim);
+}
+
+/* Green stays green but more toxic/spectral */
+.text-green-400 {
+	color: var(--color-toxic);
+}
+
+@media print {
+	.screen-only {
+		display: none !important;
+	}
+}
+.text-green-500 {
+	color: var(--color-toxic-glow);
+}
+.bg-green-400 {
+	background-color: var(--color-toxic);
+}
+.bg-green-500 {
+	background-color: var(--color-toxic-glow);
+}
+.border-green-800 {
+	border-color: rgba(74, 222, 128, 0.3);
+}
+.bg-green-950\/80 {
+	background-color: rgba(20, 83, 45, 0.8);
+}
+
+/* Blood red for stats */
+.text-red-400 {
+	color: var(--color-blood);
+}
+.text-red-500 {
+	color: var(--color-blood);
+}
+
+/* Gold for victory points */
+.text-yellow-400 {
+	color: var(--color-gold);
+}
+.text-yellow-500 {
+	color: var(--color-gold-glow);
+}
+
+/* Border purple overrides for player panel hover */
+.border-purple-500\/50 {
+	border-color: rgba(234, 88, 12, 0.5);
+}
+.hover\:border-purple-500\/50:hover {
+	border-color: rgba(234, 88, 12, 0.5);
+}
