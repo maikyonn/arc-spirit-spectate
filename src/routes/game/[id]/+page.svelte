@@ -159,6 +159,7 @@
 		const finalSnapshots = gameState.allRoundSnapshots.get(gameState.maxNavigation) ?? [];
 		const barrierData = computeBarrierChanges();
 		const barrierGainedByColor = new Map(barrierData.map((b) => [b.playerColor, b.gained]));
+		const totalRounds = gameState.maxNavigation;
 
 		return finalSnapshots
 			.map((snapshot) => {
@@ -167,6 +168,7 @@
 				const runesOnSpirits = (snapshot.spiritRuneAttachments ?? []).length;
 				const totalRunes = runesInSlots + runesOnSpirits;
 				const vpPerBarrier = barrierGained > 0 ? snapshot.victoryPoints / barrierGained : null;
+				const vpPerRound = totalRounds > 0 ? snapshot.victoryPoints / totalRounds : null;
 
 				return {
 					playerColor: snapshot.playerColor,
@@ -174,10 +176,21 @@
 					vp: snapshot.victoryPoints,
 					barrierGained,
 					vpPerBarrier,
+					vpPerRound,
 					totalRunes
 				};
 			})
 			.sort((a, b) => b.vp - a.vp); // Sort by VP descending
+	});
+
+	const totalVictoryPoints = $derived(() => {
+		const finalSnapshots = gameState.allRoundSnapshots.get(gameState.maxNavigation) ?? [];
+		return finalSnapshots.reduce((sum, snapshot) => sum + snapshot.victoryPoints, 0);
+	});
+
+	const totalVictoryPointsPerRound = $derived(() => {
+		if (gameState.maxNavigation <= 0) return null;
+		return totalVictoryPoints() / gameState.maxNavigation;
 	});
 
 	const roundTimestamp = $derived(
@@ -871,6 +884,8 @@
 					</div>
 				{:else}
 					{@const timing = navigationTiming()}
+					{@const summaryVpPerRound = totalVictoryPointsPerRound()}
+					{@const summaryTotalVp = totalVictoryPoints()}
 					<!-- Summary Layout: Main + Graphs Sidebar -->
 					<div class="flex flex-col gap-4 p-4 lg:flex-row lg:gap-6 lg:p-6">
 						<!-- Main Content -->
@@ -885,6 +900,19 @@
 										<div class="text-xs text-gray-500">Navigations</div>
 										<div class="mt-1 text-lg font-semibold text-gray-100 tabular-nums">
 											{gameState.maxNavigation}
+										</div>
+									</div>
+									<div class="rounded-lg border border-gray-800 bg-gray-900/40 p-3">
+										<div class="text-xs text-gray-500">VP / round</div>
+										<div class="mt-1 text-lg font-semibold text-gray-100 tabular-nums">
+											{#if summaryVpPerRound != null}
+												{summaryVpPerRound.toFixed(2)}
+											{:else}
+												—
+											{/if}
+										</div>
+										<div class="mt-1 text-xs text-gray-500">
+											Total VP <span class="tabular-nums">{summaryTotalVp}</span>
 										</div>
 									</div>
 									<div class="rounded-lg border border-gray-800 bg-gray-900/40 p-3">
@@ -932,6 +960,7 @@
 												<tr>
 													<th class="px-3 py-2">Player</th>
 													<th class="px-3 py-2 text-right">VP</th>
+													<th class="px-3 py-2 text-right">VP/Round</th>
 													<th class="px-3 py-2 text-right">Total Barriers</th>
 													<th class="px-3 py-2 text-right">VP/Barrier</th>
 													<th class="px-3 py-2 text-right">Runes</th>
@@ -955,6 +984,13 @@
 														</td>
 														<td class="px-3 py-2 text-right text-gray-200 tabular-nums">
 															<span class="font-semibold text-yellow-300">{row.vp}</span>
+														</td>
+														<td class="px-3 py-2 text-right text-gray-200 tabular-nums">
+															{#if row.vpPerRound != null}
+																{row.vpPerRound.toFixed(2)}
+															{:else}
+																—
+															{/if}
 														</td>
 														<td class="px-3 py-2 text-right text-gray-200 tabular-nums">
 															{row.barrierGained}
