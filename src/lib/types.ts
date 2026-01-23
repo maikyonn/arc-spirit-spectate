@@ -113,6 +113,7 @@ export interface GameSnapshot {
 	game_id: string;
 	navigation_count: number;
 	game_timestamp: string;
+	scenario: string | { id?: string; name?: string; requested?: string | null } | null;
 	player_color: string;
 	selected_character: string;
 	blood: number;
@@ -138,6 +139,7 @@ export interface GameSnapshotRow {
 	game_id: string;
 	navigation_count: number;
 	game_timestamp: string;
+	scenario: string | { id?: string; name?: string; requested?: string | null } | null;
 	player_color: string;
 	selected_character: string;
 	blood: number;

@@ -39,6 +39,8 @@ let allRoundSnapshots = $state<Map<number, PlayerSnapshot[]>>(new Map());
 let allRoundBags = $state<Map<number, BagsData>>(new Map());
 let allRoundTimestamps = $state<Map<number, string>>(new Map());
 let roundBags = $state<BagsData | null>(null);
+let roundScenario = $state<GameSnapshot['scenario'] | null>(null);
+let allRoundScenarios = $state<Map<number, GameSnapshot['scenario']>>(new Map());
 
 // Game notes and player feedback
 let gameNotes = $state<GameNotes | null>(null);
@@ -68,12 +70,18 @@ function rowsToPlayerSnapshots(rows: GameSnapshot[]): PlayerSnapshot[] {
 async function fetchSnapshots(
 	gameId: string,
 	navCount: number
-): Promise<{ players: PlayerSnapshot[]; bags: BagsData | null; timestamp: string | null }> {
+): Promise<{
+	players: PlayerSnapshot[];
+	bags: BagsData | null;
+	timestamp: string | null;
+	scenario: GameSnapshot['scenario'] | null;
+}> {
 	const snapshots = await fetchGameSnapshotsForRound(gameId, navCount);
 	const players = rowsToPlayerSnapshots(snapshots);
 	const bags = snapshots[0]?.bags ?? null;
 	const timestamp = snapshots[0]?.created_at ?? snapshots[0]?.game_timestamp ?? null;
-	return { players, bags, timestamp };
+	const scenario = snapshots[0]?.scenario ?? null;
+	return { players, bags, timestamp, scenario };
 }
 
 // Fetch all historical snapshots for graph data
@@ -81,17 +89,24 @@ async function fetchAllSnapshots(gameId: string): Promise<{
 	playersByRound: Map<number, PlayerSnapshot[]>;
 	bagsByRound: Map<number, BagsData>;
 	timestampsByRound: Map<number, string>;
+	scenariosByRound: Map<number, GameSnapshot['scenario']>;
 }> {
 	let parsed: GameSnapshot[] = [];
 	try {
 		parsed = await fetchAllGameSnapshots(gameId);
 	} catch (e) {
 		console.error('Failed to fetch all snapshots:', e);
-		return { playersByRound: new Map(), bagsByRound: new Map(), timestampsByRound: new Map() };
+		return {
+			playersByRound: new Map(),
+			bagsByRound: new Map(),
+			timestampsByRound: new Map(),
+			scenariosByRound: new Map()
+		};
 	}
 	const grouped = new Map<number, PlayerSnapshot[]>();
 	const bagsByRound = new Map<number, BagsData>();
 	const timestampsByRound = new Map<number, string>();
+	const scenariosByRound = new Map<number, GameSnapshot['scenario']>();
 
 	for (const snapshot of parsed) {
 		const navCount = snapshot.navigation_count;
@@ -121,6 +136,10 @@ async function fetchAllSnapshots(gameId: string): Promise<{
 			bagsByRound.set(navCount, snapshot.bags);
 		}
 
+		if (snapshot.scenario && !scenariosByRound.has(navCount)) {
+			scenariosByRound.set(navCount, snapshot.scenario);
+		}
+
 		const timestamp = snapshot.created_at ?? snapshot.game_timestamp;
 		if (timestamp) {
 			const existingTimestamp = timestampsByRound.get(navCount);
@@ -136,7 +155,7 @@ async function fetchAllSnapshots(gameId: string): Promise<{
 		}
 	}
 
-	return { playersByRound: grouped, bagsByRound, timestampsByRound };
+	return { playersByRound: grouped, bagsByRound, timestampsByRound, scenariosByRound };
 }
 
 // Load a game by ID
@@ -153,6 +172,8 @@ export async function loadGame(gameId: string) {
 		// Set the new game ID
 		currentGameId = gameId;
 		allRoundTimestamps = new Map();
+		allRoundScenarios = new Map();
+		roundScenario = null;
 
 		// Fetch the max navigation count
 		maxNavigation = await fetchMaxNavigationCount(gameId);
@@ -164,6 +185,7 @@ export async function loadGame(gameId: string) {
 			const latestRound = await fetchSnapshots(gameId, maxNavigation);
 			playerSnapshots = latestRound.players;
 			roundBags = latestRound.bags;
+			roundScenario = latestRound.scenario;
 			if (latestRound.timestamp) {
 				allRoundTimestamps.set(maxNavigation, latestRound.timestamp);
 				allRoundTimestamps = new Map(allRoundTimestamps);
@@ -171,6 +193,7 @@ export async function loadGame(gameId: string) {
 		} else {
 			playerSnapshots = [];
 			roundBags = null;
+			roundScenario = null;
 		}
 
 		// Fetch all historical data for graphs
@@ -178,6 +201,7 @@ export async function loadGame(gameId: string) {
 		allRoundSnapshots = history.playersByRound;
 		allRoundBags = history.bagsByRound;
 		allRoundTimestamps = history.timestampsByRound;
+		allRoundScenarios = history.scenariosByRound;
 
 		// Fetch game notes and player feedback
 		gameNotes = await fetchGameNotes(gameId);
@@ -261,14 +285,22 @@ function handleInsertSnapshot(payload: RealtimePayload) {
 	// Trigger reactivity by reassigning
 	allRoundSnapshots = new Map(allRoundSnapshots);
 
-	// Update round-level bag snapshots
-	if (snapshot.bags) {
-		allRoundBags.set(navCount, snapshot.bags);
-		allRoundBags = new Map(allRoundBags);
-		if (navCount === navigationCount) {
-			roundBags = snapshot.bags;
+		// Update round-level bag snapshots
+		if (snapshot.bags) {
+			allRoundBags.set(navCount, snapshot.bags);
+			allRoundBags = new Map(allRoundBags);
+			if (navCount === navigationCount) {
+				roundBags = snapshot.bags;
+			}
 		}
-	}
+
+		if (snapshot.scenario && !allRoundScenarios.has(navCount)) {
+			allRoundScenarios.set(navCount, snapshot.scenario);
+			allRoundScenarios = new Map(allRoundScenarios);
+			if (navCount === navigationCount) {
+				roundScenario = snapshot.scenario;
+			}
+		}
 
 	// If in live mode, auto-navigate to latest round
 	if (isLive && snapshot.navigation_count > navigationCount) {
@@ -278,8 +310,8 @@ function handleInsertSnapshot(payload: RealtimePayload) {
 	}
 
 	// If this snapshot is for the currently viewed round, add/update it
-	if (snapshot.navigation_count === navigationCount) {
-		const existingIndex = playerSnapshots.findIndex((p) => p.playerColor === snapshot.player_color);
+		if (snapshot.navigation_count === navigationCount) {
+			const existingIndex = playerSnapshots.findIndex((p) => p.playerColor === snapshot.player_color);
 
 		if (existingIndex >= 0) {
 			playerSnapshots[existingIndex] = playerSnapshot;
@@ -338,8 +370,8 @@ function handleUpdateSnapshot(payload: RealtimePayload) {
 		spiritRuneAttachments: snapshot.spirit_rune_attachments ?? []
 	};
 
-	// Update in historical data
-	if (allRoundSnapshots.has(navCount)) {
+		// Update in historical data
+		if (allRoundSnapshots.has(navCount)) {
 		const existingIdx = allRoundSnapshots
 			.get(navCount)!
 			.findIndex((p) => p.playerColor === snapshot.player_color);
@@ -348,10 +380,15 @@ function handleUpdateSnapshot(payload: RealtimePayload) {
 			allRoundSnapshots.get(navCount)![existingIdx] = playerSnapshot;
 			allRoundSnapshots = new Map(allRoundSnapshots);
 		}
-	}
+		}
 
-	// If this snapshot is for the currently viewed round, update it
-	if (snapshot.navigation_count === navigationCount) {
+		if (snapshot.scenario) {
+			allRoundScenarios.set(navCount, snapshot.scenario);
+			allRoundScenarios = new Map(allRoundScenarios);
+		}
+
+		// If this snapshot is for the currently viewed round, update it
+		if (snapshot.navigation_count === navigationCount) {
 		const existingIndex = playerSnapshots.findIndex((p) => p.playerColor === snapshot.player_color);
 
 		if (existingIndex >= 0) {
@@ -359,13 +396,17 @@ function handleUpdateSnapshot(payload: RealtimePayload) {
 			playerSnapshots = [...playerSnapshots];
 		}
 
-		if (snapshot.bags) {
-			roundBags = snapshot.bags;
-			allRoundBags.set(snapshot.navigation_count, snapshot.bags);
-			allRoundBags = new Map(allRoundBags);
+			if (snapshot.bags) {
+				roundBags = snapshot.bags;
+				allRoundBags.set(snapshot.navigation_count, snapshot.bags);
+				allRoundBags = new Map(allRoundBags);
+			}
+
+			if (snapshot.scenario) {
+				roundScenario = snapshot.scenario;
+			}
 		}
 	}
-}
 
 // Navigate to a specific round
 export async function goToRound(round: number) {
@@ -382,26 +423,32 @@ export async function goToRound(round: number) {
 	try {
 		navigationCount = round;
 
-		// Try to use cached data first
-		if (allRoundSnapshots.has(round)) {
-			playerSnapshots = [...allRoundSnapshots.get(round)!];
-			roundBags = allRoundBags.get(round) ?? null;
-		} else {
-			const fetched = await fetchSnapshots(currentGameId, round);
-			playerSnapshots = fetched.players;
-			roundBags = fetched.bags;
-			if (fetched.timestamp) {
-				allRoundTimestamps.set(round, fetched.timestamp);
-				allRoundTimestamps = new Map(allRoundTimestamps);
-			}
+			// Try to use cached data first
+			if (allRoundSnapshots.has(round)) {
+				playerSnapshots = [...allRoundSnapshots.get(round)!];
+				roundBags = allRoundBags.get(round) ?? null;
+				roundScenario = allRoundScenarios.get(round) ?? null;
+			} else {
+				const fetched = await fetchSnapshots(currentGameId, round);
+				playerSnapshots = fetched.players;
+				roundBags = fetched.bags;
+				roundScenario = fetched.scenario;
+				if (fetched.timestamp) {
+					allRoundTimestamps.set(round, fetched.timestamp);
+					allRoundTimestamps = new Map(allRoundTimestamps);
+				}
 			// Cache it
 			allRoundSnapshots.set(round, [...playerSnapshots]);
 			allRoundSnapshots = new Map(allRoundSnapshots);
-			if (fetched.bags) {
-				allRoundBags.set(round, fetched.bags);
-				allRoundBags = new Map(allRoundBags);
+				if (fetched.bags) {
+					allRoundBags.set(round, fetched.bags);
+					allRoundBags = new Map(allRoundBags);
+				}
+				if (fetched.scenario) {
+					allRoundScenarios.set(round, fetched.scenario);
+					allRoundScenarios = new Map(allRoundScenarios);
+				}
 			}
-		}
 	} catch (e) {
 		error = e instanceof Error ? e.message : 'Unknown error navigating';
 		console.error('Error navigating to round:', e);
@@ -480,6 +527,8 @@ export function cleanup() {
 	allRoundBags = new Map();
 	allRoundTimestamps = new Map();
 	roundBags = null;
+	allRoundScenarios = new Map();
+	roundScenario = null;
 	gameNotes = null;
 	playerFeedback = [];
 	error = null;
@@ -535,6 +584,9 @@ export function getGameState() {
 		get roundBags() {
 			return roundBags;
 		},
+		get roundScenario() {
+			return roundScenario;
+		},
 		get isLoading() {
 			return isLoading;
 		},
@@ -567,6 +619,9 @@ export function getGameState() {
 		},
 		get allRoundTimestamps() {
 			return allRoundTimestamps;
+		},
+		get allRoundScenarios() {
+			return allRoundScenarios;
 		},
 		get gameNotes() {
 			return gameNotes;

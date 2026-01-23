@@ -249,6 +249,24 @@
 		return `${seconds}s`;
 	}
 
+	function formatScenarioLabel(
+		value: unknown
+	): string | null {
+		if (!value) return null;
+		if (typeof value === 'string') {
+			const trimmed = value.trim();
+			return trimmed.length > 0 ? trimmed : null;
+		}
+		if (typeof value === 'object') {
+			const anyValue = value as { name?: unknown; requested?: unknown };
+			const name = typeof anyValue.name === 'string' ? anyValue.name.trim() : '';
+			if (name) return name;
+			const requested = typeof anyValue.requested === 'string' ? anyValue.requested.trim() : '';
+			return requested ? requested : null;
+		}
+		return null;
+	}
+
 	const replayRounds = $derived(() => {
 		const rounds: Array<{
 			round: number;
@@ -711,23 +729,33 @@
 								{/if}
 							</button>
 
-							<button
-								type="button"
-								onclick={() => copyShareLink(currentShareLink())}
-								class="rounded-md border border-gray-800 bg-gray-950/60 px-2.5 py-1.5 text-xs font-semibold text-gray-200 transition-colors hover:bg-gray-950/80"
-								title={`Copy share link: ${currentShareLink()}`}
-							>
-								{#if copiedShareValue === currentShareLink()}
-									Copied
-								{:else}
-									Share
-								{/if}
-							</button>
+								<button
+									type="button"
+									onclick={() => copyShareLink(currentShareLink())}
+									class="rounded-md border border-gray-800 bg-gray-950/60 px-2.5 py-1.5 text-xs font-semibold text-gray-200 transition-colors hover:bg-gray-950/80"
+									title={`Copy share link: ${currentShareLink()}`}
+								>
+									{#if copiedShareValue === currentShareLink()}
+										Copied
+									{:else}
+										Share
+									{/if}
+								</button>
 
-							<div
-								class="flex items-center gap-1.5 rounded-md border border-gray-800 bg-gray-950/60 px-2.5 py-1.5 text-[11px] text-gray-300"
-							>
-								<span class="text-gray-500">Timestamp</span>
+								{#if formatScenarioLabel(gameState.roundScenario)}
+									<div
+										class="flex items-center gap-1.5 rounded-md border border-gray-800 bg-gray-950/60 px-2.5 py-1.5 text-[11px] text-gray-300"
+										title="Scenario"
+									>
+										<span class="text-gray-500">Scenario</span>
+										<span class="font-mono text-gray-200">{formatScenarioLabel(gameState.roundScenario)}</span>
+									</div>
+								{/if}
+
+								<div
+									class="flex items-center gap-1.5 rounded-md border border-gray-800 bg-gray-950/60 px-2.5 py-1.5 text-[11px] text-gray-300"
+								>
+									<span class="text-gray-500">Timestamp</span>
 								<span class="font-mono text-gray-200">{formatTimestamp(roundTimestamp())}</span>
 							</div>
 

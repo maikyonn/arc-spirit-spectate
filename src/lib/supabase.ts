@@ -223,6 +223,7 @@ export function unwrapGameSnapshotRow(row: GameSnapshotRow): GameSnapshot {
 		game_id: row.game_id,
 		navigation_count: row.navigation_count,
 		game_timestamp: row.game_timestamp,
+		scenario: parseJsonWithFallback<GameSnapshot['scenario']>(row.scenario, null),
 		player_color: row.player_color,
 		selected_character: row.selected_character,
 		blood: row.blood,
