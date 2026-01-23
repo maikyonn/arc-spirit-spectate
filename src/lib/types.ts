@@ -201,9 +201,9 @@ export interface ArtifactAsset {
 export interface MonsterAsset {
 	id: string;
 	name: string;
-	state: string;
-	damage: number;
-	barrier: number;
+	stage: string | null;
+	damage: number | null;
+	barrier: number | null;
 	image_path: string | null;
 	card_image_path: string | null;
 	icon: string | null;

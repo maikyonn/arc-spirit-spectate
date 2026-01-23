@@ -815,7 +815,7 @@ export async function fetchAssetsData(): Promise<{
 		supabaseAssets.from(TABLES.ARTIFACTS).select('id, name, benefit, card_image_path'),
 		supabaseAssets
 			.from(TABLES.MONSTERS)
-			.select('id, name, state, damage, barrier, image_path, card_image_path, icon'),
+			.select('id, name, stage, damage, barrier, image_path, card_image_path, icon'),
 		supabaseAssets
 			.from(TABLES.ICON_POOL)
 			.select('id, name, file_path, tags')
