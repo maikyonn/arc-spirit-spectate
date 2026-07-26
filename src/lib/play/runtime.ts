@@ -2534,8 +2534,9 @@ function reduceCommand(
 			}
 			const destination = player.navigationDestination;
 			if (!destination) return failure('no_location', 'You are not at a location yet.');
-			// The Arcane Abyss now carries one permanent location action — a free Arcane
-			// Abyss Summon — alongside the monster fight, so it resolves like any other.
+			// The Arcane Abyss carries no location rows anymore (its free Abyss Summon was
+			// removed 2026-07-25) — Abyss Summons come only from monster-kill reward drops.
+			// Any rows the data DOES assign to a location resolve here like any other.
 
 			const locEntry = (catalog.locations ?? []).find((l) => l.name === destination);
 			const interactions = buildLocationInteractions(locEntry?.rewardRows);
