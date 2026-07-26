@@ -146,8 +146,10 @@
 		return rowAffordances.get(interaction.rowIndex)?.noEffectNow ?? false;
 	}
 	// A specific card instance (`inst`, 0-based) is spent once that many uses have
-	// been made; instances fill left-to-right.
+	// been made; instances fill left-to-right. Trade rows are REPEATABLE (the cost is
+	// the limiter, mirroring the runtime's allowance skip) so they never read as spent.
 	function instUsed(interaction: LocationInteraction, inst: number): boolean {
+		if (interaction.kind === 'trade') return false;
 		return inst < usedCount(interaction);
 	}
 	function instDisabled(interaction: LocationInteraction, inst: number): boolean {
@@ -495,7 +497,11 @@
 						{/each}
 					</span>
 				</span>
-				{#if armedUsesLeft > 1}
+				{#if it.kind === 'trade'}
+					<span class="uses-chip repeat">
+						<span class="repeat-glyph" aria-hidden="true">↻</span> Repeatable — trade as often as you can pay
+					</span>
+				{:else if armedUsesLeft > 1}
 					<span class="uses-chip">{armedUsesLeft} uses left this round</span>
 				{/if}
 				{#if armedFreeTrade}
@@ -574,7 +580,8 @@
 	<div class="int-scroll">
 		<div class="int-grid" data-testid="interaction-grid">
 			{#each interactions as interaction (interaction.rowIndex)}
-				{#each Array(rowAllowance) as _, inst (inst)}
+				<!-- A repeatable trade needs only one card; gain rows fan out per allowance. -->
+				{#each Array(interaction.kind === 'trade' ? 1 : rowAllowance) as _, inst (inst)}
 					{@const isUsed = instUsed(interaction, inst)}
 					{@const cantAfford = !affordable(interaction)}
 					{@const isTrade = interaction.kind === 'trade'}
@@ -646,6 +653,12 @@
 										{/each}
 									</div>
 								</div>
+
+								{#if isTrade}
+									<span class="repeat-chip" title="Repeatable — trade as often as you can pay the cost">
+										<span class="repeat-glyph" aria-hidden="true">↻</span>Repeatable
+									</span>
+								{/if}
 
 								{#if nullNow && !cantAfford}
 									<span class="cta warn">
@@ -1044,6 +1057,28 @@
 	.uses-chip.free {
 		color: var(--brand-teal, #20e0c1);
 		border-color: color-mix(in srgb, var(--brand-teal, #20e0c1) 45%, transparent);
+	}
+	.uses-chip.repeat {
+		color: var(--brand-amber, #ffba3d);
+		border-color: color-mix(in srgb, var(--brand-amber, #ffba3d) 45%, transparent);
+	}
+	/* "Repeatable ↻" marker on trade cards — trades never flip to a spent face. */
+	.repeat-chip {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.3rem;
+		padding: 0.16rem 0.55rem;
+		border-radius: 999px;
+		font-family: var(--font-display);
+		font-size: 0.56rem;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--brand-amber, #ffba3d);
+		border: 1px solid color-mix(in srgb, var(--brand-amber, #ffba3d) 40%, transparent);
+	}
+	.repeat-glyph {
+		font-size: 0.8rem;
+		line-height: 1;
 	}
 	.rack-hint {
 		margin: 0;

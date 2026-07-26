@@ -127,8 +127,11 @@ export interface PendingAugmentPlacement extends AugmentPlacementEligibility {
 export interface LocationInteractionAffordance {
 	/** Index into the location's reward rows (the `rowIndex` on `resolveLocationInteraction`). */
 	rowIndex: number;
-	/** Times this row may still be resolved this round (allowance − used, floored at 0). */
+	/** Times this row may still be resolved this round (allowance − used, floored at 0).
+	 *  Repeatable (trade) rows never deplete: this stays ≥1 as long as the cost is payable. */
 	usesRemaining: number;
+	/** True for trade rows — repeatable any number of times per round; the cost is the limiter. */
+	repeatable?: boolean;
 	/** True when the seat can resolve the row right now — cost payable OR a waiver applies. */
 	affordable: boolean;
 	/** A cost-waiver in effect for this trade, and which class grants it. Absent = pay normally. */
@@ -664,9 +667,15 @@ export function computeLocationInteractions(
 		const affordable = canAfford(interaction, mats) || freeTrade != null;
 		const noEffectNow = interactionHasNoEffect(interaction, player);
 
+		const repeatable = interaction.kind === 'trade';
 		return {
 			rowIndex: interaction.rowIndex,
-			usesRemaining: Math.max(0, rowAllowance - rowUsed),
+			// Trades are repeatable (the runtime skips their per-round allowance), so their
+			// remaining-uses never floor to 0 — the cost is the real limiter.
+			usesRemaining: repeatable
+				? Math.max(1, rowAllowance - rowUsed)
+				: Math.max(0, rowAllowance - rowUsed),
+			...(repeatable ? { repeatable: true } : {}),
 			affordable,
 			...(freeTrade ? { freeTrade } : {}),
 			costSlots,

@@ -2544,18 +2544,22 @@ function reduceCommand(
 				return failure('no_interaction', 'That location has no such interaction.');
 			}
 
-			// Each reward row is normally once per round. Child Prodigy ("do ALL location interactions
+			// Gain rows are normally once per round. Child Prodigy ("do ALL location interactions
 			// up to two times") raises the per-row allowance via extraActions['locationInteraction'],
 			// exactly like Ironmane raises the combat allowance — count how many times THIS row has
-			// already run and reject only once the allowance is spent.
+			// already run and reject only once the allowance is spent. TRADE rows are REPEATABLE:
+			// the cost is the limiter (each use consumes the paid runes), so they never spend the
+			// per-round allowance.
 			const usedKey = `row:${command.rowIndex}`;
-			const rowAllowance = 1 + (player.extraActions?.locationInteraction ?? 0);
-			const rowUsed = player.actionsUsedThisRound.filter((a) => a === usedKey).length;
-			if (rowUsed >= rowAllowance) {
-				return failure(
-					'action_used',
-					'You already resolved that interaction the maximum times this round.'
-				);
+			if (interaction.kind !== 'trade') {
+				const rowAllowance = 1 + (player.extraActions?.locationInteraction ?? 0);
+				const rowUsed = player.actionsUsedThisRound.filter((a) => a === usedKey).length;
+				if (rowUsed >= rowAllowance) {
+					return failure(
+						'action_used',
+						'You already resolved that interaction the maximum times this round.'
+					);
+				}
 			}
 
 			const log: string[] = [];
@@ -2707,12 +2711,20 @@ function reduceCommand(
 				}
 			}
 
-			// Collapse repeated Cultivate and Rest into one trigger fire each (neither
-			// has an inherent per-token effect; their payoff is class-driven).
+			// Collapse repeated Cultivate and Rest into one trigger fire each (Cultivate
+			// has no inherent per-token effect; Rest's inherent restore also fires once).
 			if (cultivateTokens > 0) {
 				applyCultivate(state, active.seatColor, log, { catalog });
 			}
 			if (restTokens > 0) {
+				// Rest's inherent effect: restore 2 barrier (flip broken-barrier tokens back
+				// to the intact side — capacity unchanged), then the class-driven payoffs.
+				const beforeRest = player.barrier;
+				player.barrier = Math.min(player.maxBarrier, player.barrier + 2);
+				player.brokenBarrier = Math.max(0, player.maxBarrier - player.barrier);
+				if (player.barrier > beforeRest) {
+					log.push(`Restored ${player.barrier - beforeRest} barrier.`);
+				}
 				applyTrigger(state, active.seatColor, 'onRest', log, { catalog });
 				// Rest-time awaken progress (Meteor Shower: "Rest with 10 Max Barrier").
 				recordRestAwakenProgress(player);

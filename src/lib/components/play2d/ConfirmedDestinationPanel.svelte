@@ -73,7 +73,11 @@
 								{/each}
 							{/each}
 						</span>
-						<span class="arrow">→</span>
+						<!-- Trades are repeatable: the loop above the arrow marks "as often as you can pay". -->
+						<span class="arrow-wrap" title="Repeatable — trade as often as you can pay">
+							<span class="repeat" aria-label="Repeatable">↻</span>
+							<span class="arrow">→</span>
+						</span>
 						<span class="icons">
 							{#each row.gain_icon_ids as token, ti (ti)}
 								{#each tokenIcons(token) as ic, k (ic.id + k)}
@@ -187,10 +191,23 @@
 		font-weight: 700;
 		color: var(--color-whisper, #8d8aa1);
 	}
+	.arrow-wrap {
+		display: inline-flex;
+		flex-direction: column;
+		align-items: center;
+		margin: 0 -7px;
+		line-height: 1;
+	}
+	.repeat {
+		color: var(--brand-amber, #ffba3d);
+		font-size: 0.7rem;
+		line-height: 1;
+		opacity: 0.9;
+	}
 	.arrow {
 		color: var(--brand-amber, #ffba3d);
 		font-size: 1.1rem;
-		margin: 0 -7px;
+		line-height: 1;
 	}
 	.row-text {
 		font-size: 0.88rem;
