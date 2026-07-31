@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTrigger, applyCultivate, awakenedClassCounts } from './apply';
+import { applyTrigger, applyCultivate, applyRest, awakenedClassCounts } from './apply';
 import { MANUAL_CLASSES } from './registry';
 import { DECISION_RESOLVERS } from './decisions';
 import { buildEffectContext } from './context';
@@ -106,6 +106,22 @@ describe('awakenedClassCounts', () => {
 });
 
 describe('Rest effects', () => {
+	it('intrinsically restores two barrier and fires every onRest class ability', () => {
+		const p = makePlayer({
+			barrier: 1,
+			maxBarrier: 4,
+			brokenBarrier: 3,
+			spirits: [spirit(1, 'A', { Fighter: 2 }, {})]
+		});
+		const log: string[] = [];
+		applyRest(makeState(p), 'Red', log);
+		expect(p.barrier).toBe(3);
+		expect(p.brokenBarrier).toBe(1);
+		expect(p.attackDice).toHaveLength(1);
+		expect(log).toContain('Restored 2 barrier.');
+		expect(log).toContain('Rested.');
+	});
+
 	it('Fighter grants basic attack dice', () => {
 		// Super-linear ladder: 4 Fighters → +5 basic dice (below the 10-cap).
 		const p = makePlayer({ maxBarrier: 10, spirits: [spirit(1, 'A', { Fighter: 4 }, {})] });

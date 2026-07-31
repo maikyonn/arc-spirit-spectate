@@ -16,7 +16,6 @@ const SUMMON = '76e58219-e805-4b94-acf4-6d62dfe4c515';
 const ABYSS = '12ff8ffe-20cb-4a86-a493-5e4ff8b9dc3e';
 const REST = 'bdded3f5-e405-4b68-b63a-9f5c2139beea';
 const CULTIVATE = '60e40dd5-c3cc-4f26-9aa3-2043b4106ade';
-const BARRIER = '6746f875-a1bc-453c-94b5-718d6ebeb025';
 const AVATAR_BARRIER = '16daf8be-6ae0-4ace-b70c-cbb30e357664';
 const ANY_RELIC = '6a85e06a-52cc-483c-aa59-38395a377307';
 const TIDAL = '4d34484d-4345-448d-b192-a425841ddbc4';
@@ -33,7 +32,7 @@ const TIDAL_COVE_ROWS: GameLocationRewardRow[] = [
 const CYBER_CITY_ROWS: GameLocationRewardRow[] = [
 	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [{ kind: 'or', icon_ids: [SORCERER, STRATEGIST] }] },
 	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [REST] },
-	{ type: 'gain', gain_icon_ids: [REST, BARRIER, BARRIER] }
+	{ type: 'gain', gain_icon_ids: [REST] }
 ];
 const LANTERN_CANYON_ROWS: GameLocationRewardRow[] = [{ type: 'gain', gain_icon_ids: [CULTIVATE] }];
 const FLORAL_PATCH_ROWS: GameLocationRewardRow[] = [
@@ -111,7 +110,7 @@ describe('resolveLocationInteraction (engine)', () => {
 		if (!again.ok) expect(again.error.code).toBe('action_used');
 	});
 
-	test('Rest restores exactly two barrier from its explicit database rewards', () => {
+	test('Rest intrinsically restores exactly two barrier and needs no barrier reward icons', () => {
 		let s = atLocation('Cyber City');
 		s.players.Red!.barrier = Math.max(0, s.players.Red!.maxBarrier - 3);
 		s.players.Red!.brokenBarrier = s.players.Red!.maxBarrier - s.players.Red!.barrier;

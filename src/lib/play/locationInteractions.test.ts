@@ -55,7 +55,7 @@ const CYBER_CITY_ROWS: GameLocationRewardRow[] = [
 const FLORAL_PATCH_ROWS: GameLocationRewardRow[] = [
 	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [AVATAR_BARRIER] },
 	{ type: 'trade', cost_icon_ids: [FOREST, FOREST], gain_icon_ids: [FLOWER] },
-	{ type: 'gain', gain_icon_ids: [REST, BARRIER, BARRIER] }
+	{ type: 'gain', gain_icon_ids: [REST] }
 ];
 
 const LANTERN_CANYON_ROWS: GameLocationRewardRow[] = [
@@ -204,11 +204,7 @@ describe('buildLocationInteractions — live map', () => {
 		expect(interactions).toHaveLength(3);
 		expect(interactions[0].gains).toEqual([{ type: 'gainMaxBarrier', amount: 1 }]);
 		expect(interactions[1].gains[0]).toMatchObject({ type: 'rune', rune: { name: 'Flower' } });
-		expect(interactions[2].gains).toEqual([
-			{ type: 'action', action: 'rest' },
-			{ type: 'restoreBarrier', amount: 1 },
-			{ type: 'restoreBarrier', amount: 1 }
-		]);
+		expect(interactions[2].gains).toEqual([{ type: 'action', action: 'rest' }]);
 	});
 
 	test('text rows and fully-unresolvable rows are skipped', () => {

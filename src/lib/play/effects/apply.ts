@@ -15,7 +15,7 @@ import { buildEffectContext, type EffectCombatInfo, type TradePayload } from './
 import { colocatedPlayers } from './colocated';
 import { runAction } from './actions';
 import { runClassHandler } from './handlers';
-import { recordCultivateAwakenProgress } from './awakenHandlers';
+import { recordCultivateAwakenProgress, recordRestAwakenProgress } from './awakenHandlers';
 import { augmentContributions } from '../augments';
 import { originRuneForName } from '../locationInteractions';
 
@@ -149,6 +149,32 @@ export function applyTrigger(
 			attributeFrom(before);
 		}
 	}
+}
+
+/**
+ * Rest intrinsically restores two current barrier, then fires every `onRest`
+ * class ability and records Rest-based awakening progress. The location row
+ * therefore needs only the Rest action icon; restoration is part of the action,
+ * not a separate reward-icon gain.
+ */
+export function applyRest(
+	state: PublicGameState,
+	seat: SeatColor,
+	log: string[],
+	opts: TriggerOptions = {}
+): void {
+	const player = state.players[seat];
+	if (!player) return;
+
+	const before = player.barrier;
+	player.barrier = Math.min(player.maxBarrier, player.barrier + 2);
+	player.brokenBarrier = Math.max(0, player.maxBarrier - player.barrier);
+	const restored = player.barrier - before;
+	if (restored > 0) log.push(`Restored ${restored} barrier.`);
+
+	applyTrigger(state, seat, 'onRest', log, opts);
+	recordRestAwakenProgress(player);
+	log.push('Rested.');
 }
 
 /**

@@ -58,7 +58,7 @@ import {
 	pvpVpForAttack,
 	resolveEncounterCombat
 } from './combat';
-import { applyTrigger, applyCultivate, awakenedClassCounts } from './effects/apply';
+import { applyTrigger, applyCultivate, applyRest, awakenedClassCounts } from './effects/apply';
 import { runAction, GENERIC_AUGMENT_RUNE_ID } from './effects/actions';
 import { augmentCapacityForSpirit, isSpiritAugmentClass } from './augments';
 import {
@@ -77,8 +77,7 @@ import { checkAwakenCondition, payAwakenCondition, needsManualAwaken } from './e
 import {
 	AWAKEN_HANDLERS,
 	AWAKEN_PROGRESS_KEYS,
-	MANUAL_AWAKEN,
-	recordRestAwakenProgress
+	MANUAL_AWAKEN
 } from './effects/awakenHandlers';
 import {
 	STATUS_LADDER,
@@ -577,8 +576,7 @@ function applyRewardGain(
 			} else if (gain.action === 'cultivate') {
 				applyCultivate(state, seat, log, { catalog });
 			} else {
-				applyTrigger(state, seat, 'onRest', log, { catalog });
-				log.push('Rested.');
+				applyRest(state, seat, log, { catalog });
 			}
 			break;
 	}
@@ -2739,18 +2737,13 @@ function reduceCommand(
 			}
 
 			// Collapse repeated Cultivate and Rest into one action fire each. Cultivate's
-			// pair-based rune/restore rule resolves once; Rest's barrier restoration is
-			// represented explicitly by the database row's reward icons.
+			// pair-based rune/restore rule resolves once; Rest intrinsically restores two
+			// barrier and fires all onRest abilities.
 			if (cultivateTokens > 0) {
 				applyCultivate(state, active.seatColor, log, { catalog });
 			}
 			if (restTokens > 0) {
-				// The row applies any explicit restore-barrier icons above; Rest itself
-				// only dispatches class effects and awakening progress.
-				applyTrigger(state, active.seatColor, 'onRest', log, { catalog });
-				// Rest-time awaken progress (Meteor Shower: "Rest with 10 Max Barrier").
-				recordRestAwakenProgress(player);
-				log.push('Rested.');
+				applyRest(state, active.seatColor, log, { catalog });
 			}
 
 			// A trade just happened — fire the location-interaction hook carrying what
