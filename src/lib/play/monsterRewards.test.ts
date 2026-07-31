@@ -22,6 +22,7 @@ const VP2 = '22e7f408-fa65-417e-a555-56ad87ecb428'; // +2 VP
 const VP3 = '54a61c34-6e05-44df-a4d1-115e004af31e'; // +3 VP
 const VP5 = '9cf8e1dd-55e0-4926-8dc8-2fb5b7b96bd4'; // +5 VP
 const ABYSS_SUMMON = '12ff8ffe-20cb-4a86-a493-5e4ff8b9dc3e';
+const AVATAR_BARRIER = '16daf8be-6ae0-4ace-b70c-cbb30e357664';
 const ANY_RELIC = '6a85e06a-52cc-483c-aa59-38395a377307';
 const ANY_RUNE = '36aab6c9-b98c-4e84-b097-e743f45dde82';
 const TEAPOT = 'c8ef5d48-2289-4fee-a34d-b041d3e8bea6';
@@ -148,6 +149,10 @@ describe('buildMonsterRewards / monsterGainFor (reward semantics)', () => {
 
 	test('the abyss-summon token resolves to an abyss summon action', () => {
 		expect(monsterGainFor(ABYSS_SUMMON)).toEqual({ type: 'action', action: 'abyssSummon' });
+	});
+
+	test('the Avatar Barrier token gains maximum barrier rather than restoring it', () => {
+		expect(monsterGainFor(AVATAR_BARRIER)).toEqual({ type: 'gainMaxBarrier', amount: 1 });
 	});
 
 	test('a named special rune resolves to a fixed rune gain', () => {

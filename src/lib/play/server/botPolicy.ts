@@ -502,6 +502,8 @@ function wantsInteraction(player: BotPlayer, profile: BotProfile, it: LocationIn
 	let want = false;
 	for (const g of it.gains) {
 		if (g.type === 'restoreBarrier') want ||= hurt;
+		else if (g.type === 'gainMaxBarrier')
+			want ||= player.maxBarrier < profile.maxBarrierTarget && heldRelics > 1;
 		else if (g.type === 'vp') want = true;
 		// A relic → 2nd build action this turn only when it clearly helps (still building dice/max barrier)
 		// and we can keep a relic in reserve — never just to spend.

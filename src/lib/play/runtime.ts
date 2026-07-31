@@ -533,9 +533,22 @@ function applyRewardGain(
 			player.victoryPoints += gain.amount;
 			log.push(`Gained ${gain.amount} Victory Point${gain.amount === 1 ? '' : 's'}.`);
 			break;
+		case 'gainMaxBarrier': {
+			const ctx = buildEffectContext({
+				state,
+				seat,
+				player,
+				trigger: 'onLocationInteraction',
+				log,
+				traitCount: 0,
+				catalog
+			});
+			runAction(ctx, { kind: 'gainMaxBarrier', amount: gain.amount });
+			break;
+		}
 		case 'restoreBarrier': {
 			// Restore barrier: flip broken-barrier tokens back to the intact side. Does NOT
-			// raise max barrier — capacity grows only through class effects.
+			// raise max barrier — that requires a separate gain-max-barrier effect.
 			const before = player.barrier;
 			player.barrier = Math.min(player.maxBarrier, player.barrier + gain.amount);
 			player.brokenBarrier = Math.max(0, player.maxBarrier - player.barrier);
@@ -2655,10 +2668,10 @@ function reduceCommand(
 			}
 
 			// Apply the gains in order. "or" gains consume the next `choices` entry.
-			// Repeated Cultivate/Rest tokens in one row collapse so their class triggers
-			// fire ONCE each (neither action has an inherent per-token effect): Cultivate
-			// fires onCultivate once, Rest fires onRest once. Summons stay per-token (each
-			// draws separately, possibly queued).
+			// Repeated Cultivate/Rest tokens in one row collapse so each action fires
+			// ONCE: Cultivate resolves its pair-based rule plus onCultivate hooks; Rest
+			// fires onRest once. Summons stay per-token (each draws separately, possibly
+			// queued).
 			let choiceCursor = 0;
 			let cultivateTokens = 0;
 			let restTokens = 0;
@@ -2680,11 +2693,24 @@ function reduceCommand(
 					}
 					case 'restoreBarrier': {
 						// Restore barrier: flip broken-barrier tokens back to the intact side
-						// (capacity is unchanged — max barrier grows only via class effects).
+						// (capacity is unchanged — max barrier requires a separate effect).
 						const before = player.barrier;
 						player.barrier = Math.min(player.maxBarrier, player.barrier + gain.amount);
 						player.brokenBarrier = Math.max(0, player.maxBarrier - player.barrier);
 						log.push(`Restored ${player.barrier - before} barrier.`);
+						break;
+					}
+					case 'gainMaxBarrier': {
+						const ctx = buildEffectContext({
+							state,
+							seat: active.seatColor,
+							player,
+							trigger: 'onLocationInteraction',
+							log,
+							traitCount: 0,
+							catalog
+						});
+						runAction(ctx, { kind: 'gainMaxBarrier', amount: gain.amount });
 						break;
 					}
 					case 'vp': {
@@ -2712,20 +2738,15 @@ function reduceCommand(
 				}
 			}
 
-			// Collapse repeated Cultivate and Rest into one trigger fire each (Cultivate
-			// has no inherent per-token effect; Rest's inherent restore also fires once).
+			// Collapse repeated Cultivate and Rest into one action fire each. Cultivate's
+			// pair-based rune/restore rule resolves once; Rest's barrier restoration is
+			// represented explicitly by the database row's reward icons.
 			if (cultivateTokens > 0) {
 				applyCultivate(state, active.seatColor, log, { catalog });
 			}
 			if (restTokens > 0) {
-				// Rest's inherent effect: restore 2 barrier (flip broken-barrier tokens back
-				// to the intact side — capacity unchanged), then the class-driven payoffs.
-				const beforeRest = player.barrier;
-				player.barrier = Math.min(player.maxBarrier, player.barrier + 2);
-				player.brokenBarrier = Math.max(0, player.maxBarrier - player.barrier);
-				if (player.barrier > beforeRest) {
-					log.push(`Restored ${player.barrier - beforeRest} barrier.`);
-				}
+				// The row applies any explicit restore-barrier icons above; Rest itself
+				// only dispatches class effects and awakening progress.
 				applyTrigger(state, active.seatColor, 'onRest', log, { catalog });
 				// Rest-time awaken progress (Meteor Shower: "Rest with 10 Max Barrier").
 				recordRestAwakenProgress(player);

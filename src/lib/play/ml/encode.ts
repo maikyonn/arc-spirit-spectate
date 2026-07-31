@@ -644,6 +644,9 @@ function appendMonsterRewardSemantics(
 			case 'restoreBarrier':
 				x[5] += clamp01(effect.amount * countScale);
 				break;
+			case 'gainMaxBarrier':
+				x[5] += clamp01(effect.amount * countScale);
+				break;
 			case 'rune': {
 				x[effect.rune.type === 'rune' ? 6 : effect.rune.type === 'augment' ? 7 : 8] += countScale;
 				const ids: readonly string[] =

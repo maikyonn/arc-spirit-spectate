@@ -152,9 +152,10 @@ export function applyTrigger(
 }
 
 /**
- * Cultivate: a bare action step with NO inherent effect of its own — the parallel
- * of Rest. Its entire payoff now flows from `onCultivate` class effects (Cultivator
- * grants the origin-trio runes + max barrier; Arc Mage, Captain, … hook in too).
+ * Cultivate grants one origin rune and restores one barrier for every pair of
+ * same-origin spirit traits. Its class payoff remains separate: the Cultivator
+ * trigger grants max barrier on the 2/3/4/5 → +1/+2/+5/+10 ladder, while Arc
+ * Mage, Captain, and other classes hook into the same `onCultivate` event.
  *
  * Repeated Cultivate tokens collapse to a SINGLE call (like Rest fires `onRest`
  * once), so there is no per-token multiplier. We still record the cultivate moment
@@ -179,10 +180,11 @@ export function applyCultivate(
 	recordCultivateAwakenProgress(player, allPlayers);
 
 	// Intrinsic Cultivate yield (every player, no class required): gain ONE origin rune
-	// for every TWO of your spirits sharing that origin — counting AWAKENED and face-down
-	// spirits alike (origin is always active; only class abilities need awakening). Only
-	// the four core origins with a basic rune (Cyber City / Floral Patch / Lantern Lights /
-	// Moon Tide) yield runes. Rune Traveler's per-turn `doubleRunes` doubles the yield.
+	// and restore ONE barrier for every TWO spirit origin traits sharing that origin.
+	// Awakened and face-down spirits both count (origin is always active; only class
+	// abilities need awakening). Only the four core origins with a basic rune (Cyber
+	// City / Floral Patch / Lantern Lights / Moon Tide) produce pairs. Rune Traveler's
+	// per-turn `doubleRunes` doubles only the rune yield, never barrier restoration.
 	const originTraits: Record<string, number> = {};
 	for (const spirit of player.spirits) {
 		for (const [origin, n] of Object.entries(spirit.origins ?? {})) {
@@ -190,10 +192,13 @@ export function applyCultivate(
 		}
 	}
 	const runeMult = player.doubleRunes ? 2 : 1;
+	let originPairs = 0;
 	for (const [origin, traits] of Object.entries(originTraits)) {
 		const rune = originRuneForName(origin);
 		if (!rune) continue;
-		const count = Math.floor(traits / 2) * runeMult;
+		const pairs = Math.floor(traits / 2);
+		originPairs += pairs;
+		const count = pairs * runeMult;
 		for (let i = 0; i < count; i += 1) {
 			player.mats.push({
 				slotIndex: player.mats.length + 1,
@@ -207,6 +212,13 @@ export function applyCultivate(
 			});
 		}
 		if (count > 0) log.push(`Cultivated ${count} ${rune.name}${count === 1 ? '' : 's'}.`);
+	}
+	if (originPairs > 0) {
+		const before = player.barrier;
+		player.barrier = Math.min(player.maxBarrier, player.barrier + originPairs);
+		player.brokenBarrier = Math.max(0, player.maxBarrier - player.barrier);
+		const restored = player.barrier - before;
+		if (restored > 0) log.push(`Cultivate restored ${restored} barrier.`);
 	}
 
 	// Class-hook dispatch: fire onCultivate class effects for the acting seat.

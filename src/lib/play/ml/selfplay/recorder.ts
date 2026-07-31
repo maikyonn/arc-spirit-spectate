@@ -229,6 +229,7 @@ function costRequirementLabel(cost: CostRequirement): string {
 function gainEffectLabel(gain: GainEffect): string {
 	switch (gain.type) {
 		case 'action': return gain.action;
+		case 'gainMaxBarrier': return 'gainMaxBarrier';
 		case 'restoreBarrier': return 'restoreBarrier';
 		case 'rune': return gain.rune.name;
 		case 'vp': return `${gain.amount}VP`;

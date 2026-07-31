@@ -17,6 +17,7 @@ const ABYSS = '12ff8ffe-20cb-4a86-a493-5e4ff8b9dc3e';
 const REST = 'bdded3f5-e405-4b68-b63a-9f5c2139beea';
 const CULTIVATE = '60e40dd5-c3cc-4f26-9aa3-2043b4106ade';
 const BARRIER = '6746f875-a1bc-453c-94b5-718d6ebeb025';
+const AVATAR_BARRIER = '16daf8be-6ae0-4ace-b70c-cbb30e357664';
 const ANY_RELIC = '6a85e06a-52cc-483c-aa59-38395a377307';
 const TIDAL = '4d34484d-4345-448d-b192-a425841ddbc4';
 const MOON_TIDE_ORIGIN = '294cee31-a7ac-4292-9b61-d4293c05c146';
@@ -27,16 +28,16 @@ const STRATEGIST = '88facdb6-3374-4891-af8a-fca2e81b79ef';
 const TIDAL_COVE_ROWS: GameLocationRewardRow[] = [
 	{ type: 'gain', gain_icon_ids: [SUMMON] },
 	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [SUMMON, ABYSS] },
-	{ type: 'trade', cost_icon_ids: [TIDAL, TIDAL], gain_icon_ids: [TEAPOT, BARRIER, BARRIER] }
+	{ type: 'trade', cost_icon_ids: [TIDAL, TIDAL], gain_icon_ids: [TEAPOT] }
 ];
 const CYBER_CITY_ROWS: GameLocationRewardRow[] = [
 	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [{ kind: 'or', icon_ids: [SORCERER, STRATEGIST] }] },
 	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [REST] },
-	{ type: 'gain', gain_icon_ids: [REST] }
+	{ type: 'gain', gain_icon_ids: [REST, BARRIER, BARRIER] }
 ];
-// Live Lantern Canyon row 0: pay 1 special → three Cultivate tokens.
-const LANTERN_CANYON_ROWS: GameLocationRewardRow[] = [
-	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [CULTIVATE, CULTIVATE, CULTIVATE] }
+const LANTERN_CANYON_ROWS: GameLocationRewardRow[] = [{ type: 'gain', gain_icon_ids: [CULTIVATE] }];
+const FLORAL_PATCH_ROWS: GameLocationRewardRow[] = [
+	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [AVATAR_BARRIER] }
 ];
 
 const CATALOG: PlayCatalog = {
@@ -61,7 +62,8 @@ const CATALOG: PlayCatalog = {
 	locations: [
 		{ name: 'Tidal Cove', originId: null, rewardRows: TIDAL_COVE_ROWS },
 		{ name: 'Cyber City', originId: 'fa7db249-d99d-4c1d-a37d-9027c9f5a31e', rewardRows: CYBER_CITY_ROWS },
-		{ name: 'Lantern Canyon', originId: null, rewardRows: LANTERN_CANYON_ROWS }
+		{ name: 'Lantern Canyon', originId: null, rewardRows: LANTERN_CANYON_ROWS },
+		{ name: 'Floral Patch', originId: null, rewardRows: FLORAL_PATCH_ROWS }
 	]
 };
 
@@ -109,6 +111,28 @@ describe('resolveLocationInteraction (engine)', () => {
 		if (!again.ok) expect(again.error.code).toBe('action_used');
 	});
 
+	test('Rest restores exactly two barrier from its explicit database rewards', () => {
+		let s = atLocation('Cyber City');
+		s.players.Red!.barrier = Math.max(0, s.players.Red!.maxBarrier - 3);
+		s.players.Red!.brokenBarrier = s.players.Red!.maxBarrier - s.players.Red!.barrier;
+		const before = s.players.Red!.barrier;
+		s = apply(s, RED, { type: 'resolveLocationInteraction', rowIndex: 2, choices: [] });
+		expect(s.players.Red!.barrier).toBe(before + 2);
+		expect(s.players.Red!.brokenBarrier).toBe(s.players.Red!.maxBarrier - s.players.Red!.barrier);
+	});
+
+	test('Floral Patch relic trade gains one max barrier without restoring current barrier', () => {
+		let s = atLocation('Floral Patch');
+		s.players.Red!.barrier = Math.max(0, s.players.Red!.maxBarrier - 2);
+		s.players.Red!.brokenBarrier = s.players.Red!.maxBarrier - s.players.Red!.barrier;
+		const beforeMax = s.players.Red!.maxBarrier;
+		const beforeBarrier = s.players.Red!.barrier;
+		s = apply(s, RED, { type: 'resolveLocationInteraction', rowIndex: 0, choices: [] });
+		expect(s.players.Red!.maxBarrier).toBe(beforeMax + 1);
+		expect(s.players.Red!.barrier).toBe(beforeBarrier);
+		expect(s.players.Red!.brokenBarrier).toBe(s.players.Red!.maxBarrier - beforeBarrier);
+	});
+
 	test('a trade rejects when the player cannot pay the cost', () => {
 		const s = atLocation('Tidal Cove'); // Red holds only Fairy relics → no Moon Tide runes
 		const res = applyGameCommand(s, RED, { type: 'resolveLocationInteraction', rowIndex: 2, choices: [] }, CATALOG);
@@ -118,7 +142,7 @@ describe('resolveLocationInteraction (engine)', () => {
 
 	test('a trade consumes the cost runes and grants the reward', () => {
 		let s = atLocation('Tidal Cove');
-		// Take 3 damage first so the two barrier (heal) icons have health to restore.
+		// Take 3 damage first to prove the updated relic trade does not restore barrier.
 		s.players.Red!.barrier = Math.max(0, s.players.Red!.maxBarrier - 3);
 		s.players.Red!.brokenBarrier = s.players.Red!.maxBarrier - s.players.Red!.barrier;
 		const beforeTokens = s.players.Red!.maxBarrier;
@@ -131,11 +155,10 @@ describe('resolveLocationInteraction (engine)', () => {
 
 		// Both Moon Tide runes were spent.
 		expect(s.players.Red!.mats.filter((r) => r.originId === MOON_TIDE_ORIGIN && r.hasRune)).toHaveLength(0);
-		// Gained a Teapot relic (a rune slot) and restored 2 health — capacity is unchanged
-		// (barrier icons heal, they do not grant potential).
+		// Gained a Teapot relic (a rune slot), with no barrier reward.
 		expect(s.players.Red!.mats.some((r) => r.name === 'Teapot' && r.hasRune && r.special)).toBe(true);
 		expect(s.players.Red!.maxBarrier).toBe(beforeTokens);
-		expect(s.players.Red!.barrier).toBe(beforeBarrier + 2);
+		expect(s.players.Red!.barrier).toBe(beforeBarrier);
 		expect(s.players.Red!.brokenBarrier).toBe(s.players.Red!.maxBarrier - s.players.Red!.barrier);
 	});
 
@@ -155,13 +178,12 @@ describe('resolveLocationInteraction (engine)', () => {
 		expect(s.players.Red!.mats.filter((r) => r.hasRune).length).toBe(2);
 	});
 
-	test('repeated Cultivate tokens fire the Cultivate yield once (no per-token scaling)', () => {
+	test('Cultivate grants runes and restores one barrier per same-origin pair', () => {
 		let s = atLocation('Lantern Canyon');
-		// Four Floral Patch spirits → the Cultivate action yields floor(4/2) = 2 origin runes.
-		// The reward row may carry several Cultivate tokens, but they COLLAPSE so the yield
-		// resolves ONCE (→ 2 "Floral Patch Rune", not 2× the token count). A spare relic
-		// covers any "any relic" cost on the row.
-		s.players.Red!.mats.push({ slotIndex: 90, hasRune: true, special: true, type: 'relic', name: 'Spare Relic' });
+		// Four Floral Patch spirits → two pairs → two runes and two restored barrier.
+		s.players.Red!.barrier = Math.max(0, s.players.Red!.maxBarrier - 3);
+		s.players.Red!.brokenBarrier = s.players.Red!.maxBarrier - s.players.Red!.barrier;
+		const beforeBarrier = s.players.Red!.barrier;
 		s.players.Red!.spirits = [
 			{ slotIndex: 1, id: 'x1', name: 'F A', cost: 1, classes: {}, origins: { 'Floral Patch': 1 }, isFaceDown: false },
 			{ slotIndex: 2, id: 'x2', name: 'F B', cost: 1, classes: {}, origins: { 'Floral Patch': 1 }, isFaceDown: false },
@@ -171,6 +193,8 @@ describe('resolveLocationInteraction (engine)', () => {
 		s = apply(s, RED, { type: 'resolveLocationInteraction', rowIndex: 0, choices: [] });
 		const forestRunes = s.players.Red!.mats.filter((r) => r.name === 'Floral Patch Rune' && r.hasRune);
 		expect(forestRunes).toHaveLength(2);
+		expect(s.players.Red!.barrier).toBe(beforeBarrier + 2);
+		expect(s.players.Red!.brokenBarrier).toBe(s.players.Red!.maxBarrier - s.players.Red!.barrier);
 	});
 
 	test('a row granting two summons queues the second draw', () => {

@@ -12,7 +12,7 @@ import {
 
 // Real reward-row icon ids + origin ids — mirror the live DB content
 // (`arc_spirits_assets` reward-row model: game_location_rows + reward_row_assignments,
-// re-synced 2026-06-17). Reward rows are read live from the DB at runtime; these
+// re-synced 2026-07-31). Reward rows are read live from the DB at runtime; these
 // fixtures encode the current map so the tests guard that every row resolves.
 const SUMMON = '76e58219-e805-4b94-acf4-6d62dfe4c515';
 const ABYSS = '12ff8ffe-20cb-4a86-a493-5e4ff8b9dc3e';
@@ -45,29 +45,29 @@ const SUPPORT = '66525fe8-e375-4473-b1c3-88d3c9fd2b1c';
 const ANIMAL = '40934631-35fc-4936-943a-c607a9c607be';
 const CURSED_SPIRIT = 'faa39f61-98ec-4f63-a873-766dc4e111f3';
 
-// ── Live location reward rows (new model, slot order, 2026-06-17) ───────────────
+// ── Live location reward rows (new model, slot order, 2026-07-31) ───────────────
 const CYBER_CITY_ROWS: GameLocationRewardRow[] = [
-	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [SUMMON, ABYSS] },
+	{ type: 'trade', cost_icon_ids: [CYBER], gain_icon_ids: [ABYSS] },
 	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [{ kind: 'or', icon_ids: [SORCERER, STRATEGIST] }] },
-	{ type: 'trade', cost_icon_ids: [CYBER, CYBER], gain_icon_ids: [MAGNET, BARRIER, BARRIER] }
+	{ type: 'trade', cost_icon_ids: [CYBER, CYBER], gain_icon_ids: [MAGNET] }
 ];
 
 const FLORAL_PATCH_ROWS: GameLocationRewardRow[] = [
-	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [AVATAR_BARRIER, AVATAR_BARRIER, AVATAR_BARRIER] },
-	{ type: 'trade', cost_icon_ids: [FOREST, FOREST], gain_icon_ids: [FLOWER, BARRIER, BARRIER] },
-	{ type: 'gain', gain_icon_ids: [REST] }
+	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [AVATAR_BARRIER] },
+	{ type: 'trade', cost_icon_ids: [FOREST, FOREST], gain_icon_ids: [FLOWER] },
+	{ type: 'gain', gain_icon_ids: [REST, BARRIER, BARRIER] }
 ];
 
 const LANTERN_CANYON_ROWS: GameLocationRewardRow[] = [
 	{ type: 'trade', cost_icon_ids: [ANY_RUNE], gain_icon_ids: [CURSED_SPIRIT] },
-	{ type: 'gain', gain_icon_ids: [CULTIVATE, BARRIER] },
-	{ type: 'trade', cost_icon_ids: [LANTERN, LANTERN], gain_icon_ids: [FIRECRACKER, BARRIER, BARRIER] }
+	{ type: 'gain', gain_icon_ids: [CULTIVATE] },
+	{ type: 'trade', cost_icon_ids: [LANTERN, LANTERN], gain_icon_ids: [FIRECRACKER] }
 ];
 
 const TIDAL_COVE_ROWS: GameLocationRewardRow[] = [
 	{ type: 'gain', gain_icon_ids: [SUMMON] },
 	{ type: 'trade', cost_icon_ids: [ANY_RELIC], gain_icon_ids: [{ kind: 'or', icon_ids: [SWORDSMAN, SUPPORT, ANIMAL] }] },
-	{ type: 'trade', cost_icon_ids: [TIDAL, TIDAL], gain_icon_ids: [TEAPOT, BARRIER, BARRIER] }
+	{ type: 'trade', cost_icon_ids: [TIDAL, TIDAL], gain_icon_ids: [TEAPOT] }
 ];
 
 const LIVE_LOCATIONS: Record<string, GameLocationRewardRow[]> = {
@@ -88,7 +88,7 @@ describe('meaningFor', () => {
 		expect(meaningFor(REST)).toMatchObject({ kind: 'action', action: 'rest' });
 		expect(meaningFor(CULTIVATE)).toMatchObject({ kind: 'action', action: 'cultivate' });
 		expect(meaningFor(BARRIER)).toMatchObject({ kind: 'restoreBarrier' });
-		expect(meaningFor(AVATAR_BARRIER)).toMatchObject({ kind: 'restoreBarrier' });
+		expect(meaningFor(AVATAR_BARRIER)).toMatchObject({ kind: 'gainMaxBarrier' });
 		expect(meaningFor(ANY_RELIC)).toMatchObject({ kind: 'wildcardRelic' });
 		expect(meaningFor(ANY_RUNE)).toMatchObject({ kind: 'anyRune' });
 		expect(meaningFor(TIDAL)).toMatchObject({ kind: 'originRune', originId: MOON_TIDE_ORIGIN });
@@ -142,26 +142,24 @@ describe('buildLocationInteractions — live map', () => {
 			expect(choose.options.every((o) => o.special && o.classId != null)).toBe(true);
 		}
 
-		// Row 2: pay 2 Moon Tide runes → a Teapot relic + 2 heal.
+		// Row 2: pay 2 Moon Tide runes → a Teapot relic.
 		expect(interactions[2].cost).toEqual([
 			expect.objectContaining({ match: 'origin', originId: MOON_TIDE_ORIGIN }),
 			expect.objectContaining({ match: 'origin', originId: MOON_TIDE_ORIGIN })
 		]);
 		expect(interactions[2].gains).toEqual([
-			{ type: 'rune', rune: expect.objectContaining({ name: 'Teapot', special: true, type: 'relic' }) },
-			{ type: 'restoreBarrier', amount: 1 },
-			{ type: 'restoreBarrier', amount: 1 }
+			{ type: 'rune', rune: expect.objectContaining({ name: 'Teapot', special: true, type: 'relic' }) }
 		]);
 	});
 
-	test('Cyber City: a Summon+Abyss trade, an "or" augment choice, and a Cyber trade', () => {
+	test('Cyber City: a Cyber-rune Abyss summon, an "or" augment choice, and a Cyber trade', () => {
 		const interactions = buildLocationInteractions(CYBER_CITY_ROWS);
 		expect(interactions).toHaveLength(3);
 
-		expect(interactions[0].gains).toEqual([
-			{ type: 'action', action: 'spiritWorldSummon' },
-			{ type: 'action', action: 'abyssSummon' }
+		expect(interactions[0].cost).toEqual([
+			expect.objectContaining({ match: 'origin', originId: CYBER_ORIGIN })
 		]);
+		expect(interactions[0].gains).toEqual([{ type: 'action', action: 'abyssSummon' }]);
 
 		const choose = interactions[1].gains[0];
 		expect(choose.type).toBe('chooseRune');
@@ -191,12 +189,9 @@ describe('buildLocationInteractions — live map', () => {
 			}
 		]);
 
-		// Row 1: free Cultivate + restore 1 health.
-		expect(interactions[1].gains).toEqual([
-			{ type: 'action', action: 'cultivate' },
-			{ type: 'restoreBarrier', amount: 1 }
-		]);
-		// Row 2: pay 2 Lantern Lights → Firecracker relic + 2 heal.
+		// Row 1: free Cultivate. Its pair-based restoration is resolved by the action.
+		expect(interactions[1].gains).toEqual([{ type: 'action', action: 'cultivate' }]);
+		// Row 2: pay 2 Lantern Lights → Firecracker relic.
 		expect(interactions[2].cost).toEqual([
 			expect.objectContaining({ match: 'origin', originId: LANTERN_ORIGIN }),
 			expect.objectContaining({ match: 'origin', originId: LANTERN_ORIGIN })
@@ -204,16 +199,16 @@ describe('buildLocationInteractions — live map', () => {
 		expect(interactions[2].gains[0]).toMatchObject({ type: 'rune', rune: { name: 'Firecracker' } });
 	});
 
-	test('Floral Patch: heal trade, forest trade, and free Rest', () => {
+	test('Floral Patch: max-barrier trade, forest trade, and free Rest', () => {
 		const interactions = buildLocationInteractions(FLORAL_PATCH_ROWS);
 		expect(interactions).toHaveLength(3);
-		expect(interactions[0].gains).toEqual([
-			{ type: 'restoreBarrier', amount: 1 },
+		expect(interactions[0].gains).toEqual([{ type: 'gainMaxBarrier', amount: 1 }]);
+		expect(interactions[1].gains[0]).toMatchObject({ type: 'rune', rune: { name: 'Flower' } });
+		expect(interactions[2].gains).toEqual([
+			{ type: 'action', action: 'rest' },
 			{ type: 'restoreBarrier', amount: 1 },
 			{ type: 'restoreBarrier', amount: 1 }
 		]);
-		expect(interactions[1].gains[0]).toMatchObject({ type: 'rune', rune: { name: 'Flower' } });
-		expect(interactions[2].gains).toEqual([{ type: 'action', action: 'rest' }]);
 	});
 
 	test('text rows and fully-unresolvable rows are skipped', () => {
@@ -245,7 +240,7 @@ describe('buildLocationInteractions — live map', () => {
 
 describe('matchRewardCost / canAfford', () => {
 	const tidalTrade = buildLocationInteractions(TIDAL_COVE_ROWS)[2]; // 2× Moon Tide origin
-	const anyRelicTrade = buildLocationInteractions(CYBER_CITY_ROWS)[0]; // pay any relic
+	const anyRelicTrade = buildLocationInteractions(CYBER_CITY_ROWS)[1]; // pay any relic
 	const anyBasicTrade = buildLocationInteractions(LANTERN_CANYON_ROWS)[0]; // pay any basic rune
 
 	test('origin cost matches by originId', () => {
@@ -312,7 +307,7 @@ describe('matchRewardCost / canAfford', () => {
 });
 
 describe('matchRewardCost — player discard choice for wildcard costs', () => {
-	const anyRelicTrade = buildLocationInteractions(CYBER_CITY_ROWS)[0]; // pay any relic
+	const anyRelicTrade = buildLocationInteractions(CYBER_CITY_ROWS)[1]; // pay any relic
 	const anyBasicTrade = buildLocationInteractions(LANTERN_CANYON_ROWS)[0]; // pay any basic rune
 
 	test('honors the chosen held-slot index for a wildcard cost', () => {

@@ -27,6 +27,7 @@ export type RewardActionKind = 'spiritWorldSummon' | 'abyssSummon' | 'cultivate'
 /** What a single reward-row icon means, once resolved against the catalog. */
 export type RewardIconMeaning =
 	| { kind: 'action'; action: RewardActionKind; label: string }
+	| { kind: 'gainMaxBarrier'; label: string }
 	| { kind: 'restoreBarrier'; label: string }
 	| { kind: 'originRune'; runeId: string; originId: string; originName: string; runeName: string; label: string }
 	| { kind: 'specialRune'; runeId: string; classId: string | null; runeName: string; label: string }
@@ -69,12 +70,11 @@ export const REWARD_ICON_SEMANTICS: Record<string, RewardIconMeaning> = {
 	[CULTIVATE_ICON]: { kind: 'action', action: 'cultivate', label: 'Cultivate' },
 	[REST_ICON]: { kind: 'action', action: 'rest', label: 'Rest' },
 
-	// Barrier restore tokens — the plain, arcane-flavored, and avatar barrier icons all
-	// RESTORE BARRIER (flip broken barrier tokens back to the barrier side). They do NOT
-	// grant max barrier; capacity grows only through class effects (e.g. Cultivator).
+	// The Avatar Barrier token adds one potential token (maximum barrier) without
+	// restoring it. Plain and arcane barrier tokens restore existing capacity.
 	[BARRIER_ICON]: { kind: 'restoreBarrier', label: 'Restore Barrier' },
 	[ARCANE_BARRIER_ICON]: { kind: 'restoreBarrier', label: 'Restore Barrier' },
-	[AVATAR_BARRIER_ICON]: { kind: 'restoreBarrier', label: 'Restore Barrier' },
+	[AVATAR_BARRIER_ICON]: { kind: 'gainMaxBarrier', label: 'Gain Max Barrier' },
 
 	// Wildcard for "any one relic". As a trade COST it is paid by any held relic
 	// (runes/augments never qualify); as a monster-reward GAIN the reward builder
@@ -268,6 +268,7 @@ export interface ResolvedRune {
 
 export type GainEffect =
 	| { type: 'action'; action: RewardActionKind }
+	| { type: 'gainMaxBarrier'; amount: number }
 	| { type: 'restoreBarrier'; amount: number }
 	| { type: 'rune'; rune: ResolvedRune }
 	/** Victory points (monster-kill reward). */
@@ -336,6 +337,8 @@ function gainEffectFor(token: RewardIconToken): GainEffect | null {
 	switch (m.kind) {
 		case 'action':
 			return { type: 'action', action: m.action };
+		case 'gainMaxBarrier':
+			return { type: 'gainMaxBarrier', amount: 1 };
 		case 'restoreBarrier':
 			return { type: 'restoreBarrier', amount: 1 };
 		case 'victoryPoints':
@@ -371,7 +374,7 @@ function costRequirementFor(token: RewardIconToken): CostRequirement | null {
 		case 'specialRune':
 			return { match: 'specialRune', runeId: m.runeId, runeName: m.runeName, label: m.label };
 		default:
-			return null; // actions/restoreBarrier are never costs
+			return null; // actions/barrier effects are never costs
 	}
 }
 

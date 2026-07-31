@@ -40,9 +40,14 @@ function fireKill(
 describe('Adaptive Fighter', () => {
 	it('overkill by 2: gains 1 potential', () => {
 		const before = makePlayer().maxBarrier; // 4
-		const { player, log } = fireKill({ dealt: 10, overkill: 2, killed: true });
+		const { player, log } = fireKill(
+			{ dealt: 10, overkill: 2, killed: true },
+			{ barrier: 2, brokenBarrier: 2 }
+		);
 
 		expect(player.maxBarrier).toBe(before + 1);
+		expect(player.barrier).toBe(2);
+		expect(player.brokenBarrier).toBe(3);
 		// Surfaces to the player as an attributed log line (no silent no-op).
 		expect(log.some((l) => l.includes('Adaptive Fighter: Gained 1 max barrier.'))).toBe(true);
 		// Did NOT take the "not killed" branch.

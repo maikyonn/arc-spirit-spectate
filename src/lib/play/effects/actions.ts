@@ -143,10 +143,10 @@ export function runAction(ctx: EffectContext, action: EffectAction, multiplier =
 			const amount = scaled(action.amount);
 			const oldMax = player.maxBarrier;
 			player.maxBarrier = Math.min(10, player.maxBarrier + amount);
-			// New capacity arrives as fresh barrier tokens — grow barrier ONLY by the
-			// actual capacity gained (capped at 10), so it never launders broken barrier.
+			// Gaining potential raises capacity only. It does not restore barrier:
+			// the newly-added capacity begins broken until a separate restore effect
+			// flips it to the intact side.
 			const grew = player.maxBarrier - oldMax;
-			player.barrier = Math.min(player.maxBarrier, player.barrier + grew);
 			player.brokenBarrier = Math.max(0, player.maxBarrier - player.barrier);
 			log.push(`Gained ${grew} max barrier.`);
 			break;

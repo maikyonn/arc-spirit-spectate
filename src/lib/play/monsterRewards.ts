@@ -45,6 +45,8 @@ export function monsterGainFor(iconId: string): GainEffect | null {
 			return { type: 'vp', amount: m.amount };
 		case 'action':
 			return { type: 'action', action: m.action };
+		case 'gainMaxBarrier':
+			return { type: 'gainMaxBarrier', amount: 1 };
 		case 'restoreBarrier':
 			return { type: 'restoreBarrier', amount: 1 };
 		case 'anyRune':

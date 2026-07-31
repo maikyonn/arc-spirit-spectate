@@ -171,9 +171,8 @@ export interface ResolvedRewardOption {
 	label: string;
 	/** icon_pool id, for rendering the reward glyph. */
 	iconToken: string;
-	/** The claimable effect's discriminant ('vp' | 'rune' | 'chooseRune' | 'action' |
-	 *  'restoreBarrier'). */
-	effect: 'vp' | 'rune' | 'chooseRune' | 'action' | 'restoreBarrier';
+	/** The claimable effect's discriminant. */
+	effect: 'vp' | 'rune' | 'chooseRune' | 'action' | 'gainMaxBarrier' | 'restoreBarrier';
 	/** For a `chooseRune` reward: the runes the player picks among (the `choices` payload of
 	 *  `resolveMonsterReward` indexes into this, in pick order). Absent otherwise. */
 	chooseOptions?: { runeId: string; name: string }[];
@@ -620,12 +619,14 @@ function freeTradeFor(
 	return undefined;
 }
 
-/** A row does nothing useful right now iff every gain is a barrier restore and the player is
- *  already at full barrier (brokenBarrier === 0). Other gains always do something. */
+/** A row does nothing useful right now iff every gain is a barrier effect that is
+ * already capped: restore at full current barrier, or max-barrier gain at the cap. */
 function interactionHasNoEffect(interaction: LocationInteraction, player: PrivatePlayerState): boolean {
 	if (interaction.gains.length === 0) return false;
-	return (
-		interaction.gains.every((g) => g.type === 'restoreBarrier') && (player.brokenBarrier ?? 0) === 0
+	return interaction.gains.every(
+		(g) =>
+			(g.type === 'restoreBarrier' && (player.brokenBarrier ?? 0) === 0) ||
+			(g.type === 'gainMaxBarrier' && player.maxBarrier >= 10)
 	);
 }
 
