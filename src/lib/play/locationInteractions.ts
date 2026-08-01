@@ -36,7 +36,7 @@ export type RewardIconMeaning =
 	| { kind: 'wildcardRelic'; label: string }
 	/** Victory points (monster-kill reward token). */
 	| { kind: 'victoryPoints'; amount: number; label: string }
-	/** Arcane Blood resource (monster corruption reward token). */
+	/** Arcane Blood resource (monster corruption/kill reward token). */
 	| { kind: 'arcaneBlood'; amount: number; label: string }
 	/** "Any basic rune" gain wildcard — choose one of the four origin runes. */
 	| { kind: 'anyRune'; label: string };
