@@ -418,7 +418,6 @@ function structuralPlayer(player: PrivatePlayerState, isOwner: boolean, revealed
 			pendingDraw: structuredClone(player.pendingDraw),
 			pendingDrawQueue: structuredClone(player.pendingDrawQueue),
 			pendingReward: structuredClone(player.pendingReward),
-			pendingRewardQueue: structuredClone(player.pendingRewardQueue ?? []),
 			pendingAwakenReward: structuredClone(player.pendingAwakenReward),
 			pendingCorruptionDiscard: structuredClone(player.pendingCorruptionDiscard ?? null),
 			manualPrompts: player.manualPrompts.map((prompt) => ({

@@ -42,9 +42,9 @@ server-authoritative rules engine, each covered by automated tests. Code must be
   (+onStatusChange, onTakeDamage, onLocationInteraction, onPlayerInteraction); `count: number|'1+'`
   → `selectBreakpoint` returns `{bp, multiplier}` (`1+` ⇒ multiplier = traitCount); extend
   `EffectAction` (gainVP, gainInitiative, reduceIncomingDamage, deflect, combatBonus, gainAugment,
-  gainRelic, brokenBarrier, conditional, extraAction, manual). New `PrivatePlayerState` fields
+  gainRelic, arcaneBlood, conditional, extraAction, manual). New `PrivatePlayerState` fields
   (default 0/false): damageReduction, deflect, combatDamageBonus, stunImmune, spiritAugments,
-  relics, brokenBarrier, extraActions.
+  relics, arcaneBlood, extraActions.
 - **Handler-table escape hatch** (`CLASS_HANDLERS: Record<class, Partial<Record<trigger, (ctx)=>void>>>`)
   for the ~10 irreducibly bespoke classes (Dark Assassin, Disruptor, Guardian, World Ender/Guardian,
   Abyss Summoner, …). `applyTrigger` fires declarative breakpoints FIRST, then handlers.
@@ -70,7 +70,7 @@ server-authoritative rules engine, each covered by automated tests. Code must be
 ## Known risks
 
 - DB `description_translations`/`count_translations` are mojibake for unrelated effects — encode ONLY from English `description`.
-- ~10 classes gate to MANUAL for missing primitives (Broken Barrier, Relic-vs-rune, Spirit Augment, Stun, Hero trait, Origin-Location typing, explicit Awakening Phase).
+- ~10 classes gate to MANUAL for missing primitives (Arcane Blood, Relic-vs-rune, Spirit Augment, Stun, Hero trait, Origin-Location typing, explicit Awakening Phase).
 - `1+` multiplier must not regress the numeric breakpoint path (Fighter/Enchanter/Elementalist).
 - Co-located/multi-player effects (Healer/Rune Traveler/Infiltrator) must stay order-stable + only touch active seats.
 - No real Awakening Phase — fold Awakening-Phase effects into `enterCleanup`; ensure status changes resolve before VP win-cons and `findWinner` runs after.

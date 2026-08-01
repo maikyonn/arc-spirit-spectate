@@ -43,8 +43,6 @@ export function monsterGainFor(iconId: string): GainEffect | null {
 	switch (m.kind) {
 		case 'victoryPoints':
 			return { type: 'vp', amount: m.amount };
-		case 'arcaneBlood':
-			return { type: 'arcaneBlood', amount: m.amount };
 		case 'action':
 			return { type: 'action', action: m.action };
 		case 'gainMaxBarrier':

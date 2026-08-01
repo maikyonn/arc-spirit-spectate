@@ -172,7 +172,7 @@ export interface ResolvedRewardOption {
 	/** icon_pool id, for rendering the reward glyph. */
 	iconToken: string;
 	/** The claimable effect's discriminant. */
-	effect: 'vp' | 'arcaneBlood' | 'rune' | 'chooseRune' | 'action' | 'gainMaxBarrier' | 'restoreBarrier';
+	effect: 'vp' | 'rune' | 'chooseRune' | 'action' | 'gainMaxBarrier' | 'restoreBarrier';
 	/** For a `chooseRune` reward: the runes the player picks among (the `choices` payload of
 	 *  `resolveMonsterReward` indexes into this, in pick order). Absent otherwise. */
 	chooseOptions?: { runeId: string; name: string }[];

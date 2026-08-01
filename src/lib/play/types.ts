@@ -368,14 +368,10 @@ export interface ActionResult {
 export interface PendingRewardState {
 	monsterId: string;
 	monsterName: string;
-	/** Why this reward was offered. Absent on older snapshots means a monster kill. */
-	rewardKind?: 'monsterKill' | 'monsterCorruption';
 	/** The full reward pool (icon_pool ids) to choose from. */
 	rewardTrack: string[];
 	/** How many tokens the player may claim (already capped at the resolvable count). */
 	chooseAmount: number;
-	/** When true, the player must claim exactly chooseAmount rather than up to it. */
-	exact?: boolean;
 }
 
 /**
@@ -534,8 +530,6 @@ export interface MonsterState {
 	damage: number;
 	rewardTrack: string[]; // icon_pool ids
 	chooseAmount: number; // rewards picked on kill (default 2)
-	corruptionRewardTrack?: string[]; // rewards offered when this monster corrupts a player
-	corruptionChooseAmount?: number; // exact number picked from corruptionRewardTrack
 	/** Kills still needed to defeat THIS monster. Starts at the active player count; each
 	 *  kill resets HP to full and decrements this, floored at 0 so excess kills (overkill)
 	 *  never carry over to the next monster. */
@@ -639,8 +633,6 @@ export interface PlayCatalogMonster {
 	rewardTrack: string[]; // icon_pool ids
 	dicePool: string[]; // icon_pool ids (monster's own dice — informational for now)
 	chooseAmount: number; // rewards picked on kill
-	corruptionRewardTrack?: string[];
-	corruptionChooseAmount?: number;
 	stage: number;
 	/** Difficulty rung within a stage (0 = weakest). Drives the escalation ladder. */
 	order: number;
@@ -793,8 +785,6 @@ export interface PrivatePlayerState {
 	 */
 	brokenBarrier: number;
 	victoryPoints: number;
-	/** Persistent resource earned from Arcane Blood reward tokens. */
-	arcaneBlood?: number;
 	/** Victory Points at the end of each completed round (one entry per round, in
 	 *  order) — powers the post-game "points over time" chart. Empty until the first
 	 *  round closes; the live total is always {@link victoryPoints}. */
@@ -817,8 +807,6 @@ export interface PrivatePlayerState {
 	 * in the projection; blocks ending the Location phase until claimed.
 	 */
 	pendingReward: PendingRewardState | null;
-	/** Additional independent rewards waiting behind pendingReward (e.g. corrupt + kill). */
-	pendingRewardQueue?: PendingRewardState[];
 	/**
 	 * A Cursed-Spirit Awakening-Phase reward selection awaiting this player. Built in
 	 * `enterCleanup` when the player crossed a corruption stage this round while

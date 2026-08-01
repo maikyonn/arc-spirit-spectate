@@ -567,8 +567,6 @@ export function advanceMonsterIfDefeated(state: PublicGameState, catalog?: PlayC
 			damage: next.damage,
 			rewardTrack: [...next.rewardTrack],
 			chooseAmount: next.chooseAmount,
-			corruptionRewardTrack: [...(next.corruptionRewardTrack ?? [])],
-			corruptionChooseAmount: next.corruptionChooseAmount ?? 2,
 			livesRemaining: lives,
 			livesTotal: lives,
 			ladderIndex: idx + 1,

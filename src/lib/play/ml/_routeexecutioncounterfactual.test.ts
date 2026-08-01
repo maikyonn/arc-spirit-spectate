@@ -417,7 +417,6 @@ function gainEffectLabel(gain: GainEffect): string {
 		case 'restoreBarrier': return 'restoreBarrier';
 		case 'rune': return gain.rune.name.replace(/\s+/g, '');
 		case 'vp': return `${gain.amount}VP`;
-		case 'arcaneBlood': return `${gain.amount}ArcaneBlood`;
 		case 'chooseRune': {
 			const options = gain.options.map((o) => o.name.replace(/\s+/g, '')).slice(0, 3).join('/');
 			return options ? `chooseRune:${options}` : 'chooseRune';

@@ -109,15 +109,8 @@ export function buildPlayCatalog(assets: AssetsData): PlayCatalog {
 				damage: typeof monster.damage === 'number' ? monster.damage : 0,
 				barrier: typeof monster.barrier === 'number' ? monster.barrier : 1,
 				rewardTrack: Array.isArray(monster.reward_track) ? monster.reward_track : [],
-				corruptionRewardTrack: Array.isArray(monster.corruption_reward_track)
-					? monster.corruption_reward_track
-					: [],
 				dicePool: Array.isArray(monster.dice_pool) ? monster.dice_pool : [],
 				chooseAmount: typeof monster.choose_amount === 'number' ? monster.choose_amount : 2,
-				corruptionChooseAmount:
-					typeof monster.corruption_choose_amount === 'number'
-						? monster.corruption_choose_amount
-						: 2,
 				stage: typeof monster.stage === 'number' ? monster.stage : Number(monster.stage) || 1,
 				order: typeof monster.order_num === 'number' ? monster.order_num : 0
 			}))

@@ -49,7 +49,7 @@
 				ttsUsername: snapshot.tts_username ?? null,
 				selectedCharacter: snapshot.selected_character,
 				navigationDestination: snapshot.navigation_destination ?? null,
-				brokenBarrier: snapshot.broken_barrier,
+				blood: snapshot.blood,
 				victoryPoints: snapshot.victory_points,
 				barrier: snapshot.barrier ?? 0,
 				statusLevel: snapshot.status_level ?? 1,

@@ -1135,7 +1135,7 @@
 								<h3 class="subhead">Game Progress</h3>
 								<div class="graph-stack">
 									<ResourceGraph
-										type="brokenBarrier"
+										type="blood"
 										data={graphData}
 										currentRound={gameState.navigationCount}
 										onRoundClick={handleRoundChange}

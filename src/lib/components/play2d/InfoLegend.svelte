@@ -361,8 +361,8 @@
 			},
 			{
 				ids: ['80f1d5a8-812e-4bb2-b341-68e69d9a3e38'],
-				label: 'Broken Barrier',
-				desc: 'Barrier tokens flipped to their broken side when you take damage.'
+				label: 'Arcane Blood',
+				desc: 'Corrupted potential — health flipped to its dark side when you take damage.'
 			},
 			{
 				ids: ['36aab6c9-b98c-4e84-b097-e743f45dde82', '6a85e06a-52cc-483c-aa59-38395a377307'],

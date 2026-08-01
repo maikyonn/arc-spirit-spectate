@@ -216,7 +216,6 @@ function buildPlayerState(seatColor: SeatColor, seat: LobbySeatState): PrivatePl
 		navigationDestination: null,
 		brokenBarrier: 0,
 		victoryPoints: 0,
-		arcaneBlood: 0,
 		vpHistory: [],
 		barrier: 4,
 		maxBarrier: 4,
@@ -232,7 +231,6 @@ function buildPlayerState(seatColor: SeatColor, seat: LobbySeatState): PrivatePl
 		handDraws: [],
 		pendingDraw: null,
 		pendingReward: null,
-		pendingRewardQueue: [],
 		pendingAwakenReward: null,
 		pendingCorruptionDiscard: null,
 		pendingDrawQueue: [],
@@ -534,10 +532,6 @@ function applyRewardGain(
 			player.victoryPoints += gain.amount;
 			log.push(`Gained ${gain.amount} Victory Point${gain.amount === 1 ? '' : 's'}.`);
 			break;
-		case 'arcaneBlood':
-			player.arcaneBlood = (player.arcaneBlood ?? 0) + gain.amount;
-			log.push(`Gained ${gain.amount} Arcane Blood.`);
-			break;
 		case 'gainMaxBarrier': {
 			const ctx = buildEffectContext({
 				state,
@@ -593,19 +587,6 @@ function applyRewardGain(
  * resolvable tokens (default `chooseRune` option). Used when the host force-
  * advances the Location phase so a timeout never silently forfeits rewards.
  */
-function enqueueReward(player: PrivatePlayerState, reward: PendingRewardState): void {
-	if (!player.pendingReward) {
-		player.pendingReward = reward;
-		return;
-	}
-	player.pendingRewardQueue ??= [];
-	player.pendingRewardQueue.push(reward);
-}
-
-function advanceRewardQueue(player: PrivatePlayerState): void {
-	player.pendingReward = player.pendingRewardQueue?.shift() ?? null;
-}
-
 function autoClaimReward(
 	state: PublicGameState,
 	seat: SeatColor,
@@ -619,14 +600,11 @@ function autoClaimReward(
 	for (const opt of picks) {
 		applyRewardGain(state, seat, player, opt.effect, 0, log, catalog);
 	}
-	advanceRewardQueue(player);
+	player.pendingReward = null;
 	player.lastAction = {
 		key: 'reward',
-		label:
-			pending.rewardKind === 'monsterCorruption'
-				? `${pending.monsterName} corruption rewards`
-				: `${pending.monsterName} rewards`,
-		log: log.length ? log : ['Claimed rewards.']
+		label: `${pending.monsterName} rewards`,
+		log: log.length ? log : ['Claimed monster rewards.']
 	};
 }
 
@@ -724,7 +702,7 @@ function drainPendingBeforeAdvance(state: PublicGameState, catalog: PlayCatalog)
 			if (!seatPlayer) continue;
 			// Auto-claim any unclaimed monster reward FIRST (so a reward summon's draw is
 			// then returned below rather than leaking out of its bag).
-			while (seatPlayer.pendingReward) {
+			if (seatPlayer.pendingReward) {
 				autoClaimReward(state, seat, seatPlayer, catalog);
 			}
 			if (seatPlayer.handDraws.length > 0 || seatPlayer.pendingDraw) {
@@ -942,8 +920,6 @@ function ensurePlayerCollections(player: PrivatePlayerState) {
 	player.unplacedAugments ??= [];
 	player.pendingDraw ??= null;
 	player.pendingReward ??= null;
-	player.pendingRewardQueue ??= [];
-	player.arcaneBlood ??= 0;
 	player.pendingAwakenReward ??= null;
 	player.pendingCorruptionDiscard ??= null;
 	player.pendingDrawQueue ??= [];
@@ -977,6 +953,9 @@ function ensurePlayerCollections(player: PrivatePlayerState) {
 		if (player.maxBarrier === undefined && legacy.maxTokens !== undefined)
 			player.maxBarrier = legacy.maxTokens;
 	}
+	// Broken barrier is now derived (maxBarrier − barrier); strip any stale standalone
+	// field from states persisted before that change.
+	delete (player as unknown as { arcaneBlood?: number }).arcaneBlood;
 	player.extraActions ??= {};
 	// P4 per-combat flags.
 	player.combatDamageMultiplier ??= 1;
@@ -1102,8 +1081,6 @@ function spawnMonster(catalog: PlayCatalog, playerCount: number): PublicGameStat
 		damage: monster.damage,
 		rewardTrack: [...monster.rewardTrack],
 		chooseAmount: monster.chooseAmount,
-		corruptionRewardTrack: [...(monster.corruptionRewardTrack ?? [])],
-		corruptionChooseAmount: monster.corruptionChooseAmount ?? 2,
 		livesRemaining: lives,
 		livesTotal: lives,
 		// Start at the bottom rung; the next rung appears once these lives are spent.
@@ -2824,37 +2801,18 @@ function reduceCommand(
 				monster: result.fought ?? null,
 				log: result.log
 			});
-			// Corruption and a kill are independent reward events. A simultaneous strike can
-			// produce both, so enqueue each offer instead of allowing one to overwrite the other.
-			if (result.corrupted && result.fought) {
-				const claim = rewardClaimCount(
-					result.fought.corruptionRewardTrack,
-					result.fought.corruptionChooseAmount ?? 2
-				);
-				if (claim > 0) {
-					enqueueReward(active.player, {
-						monsterId: result.fought.id,
-						monsterName: result.fought.name,
-						rewardKind: 'monsterCorruption',
-						rewardTrack: [...(result.fought.corruptionRewardTrack ?? [])],
-						chooseAmount: claim,
-						exact: true
-					});
-				}
-			}
-			// Defeating the monster opens a separate reward selection: the player claims up to
+			// Defeating the monster opens a reward selection: the player claims up to
 			// `chooseAmount` tokens from the DEFEATED monster's reward track (capped at the
 			// resolvable count). This blocks ending the Location phase until claimed.
 			if (result.killed && result.fought) {
 				const claim = rewardClaimCount(result.fought.rewardTrack, result.fought.chooseAmount);
 				if (claim > 0) {
-					enqueueReward(active.player, {
+					active.player.pendingReward = {
 						monsterId: result.fought.id,
 						monsterName: result.fought.name,
-						rewardKind: 'monsterKill',
 						rewardTrack: [...result.fought.rewardTrack],
 						chooseAmount: claim
-					});
+					};
 				}
 			}
 			return success(state);
@@ -2879,12 +2837,6 @@ function reduceCommand(
 				if (byIndex.has(idx) && !picks.includes(idx)) picks.push(idx);
 			}
 			if (picks.length === 0) return failure('no_picks', 'Select at least one reward to claim.');
-			if (pending.exact && picks.length !== pending.chooseAmount) {
-				return failure(
-					'wrong_count',
-					`Choose exactly ${pending.chooseAmount} reward${pending.chooseAmount === 1 ? '' : 's'}.`
-				);
-			}
 			if (picks.length > pending.chooseAmount) {
 				return failure(
 					'too_many',
@@ -2902,14 +2854,11 @@ function reduceCommand(
 				applyRewardGain(state, active.seatColor, player, opt.effect, choice, log, catalog);
 			}
 
-			advanceRewardQueue(player);
+			player.pendingReward = null;
 			player.lastAction = {
 				key: 'reward',
-				label:
-					pending.rewardKind === 'monsterCorruption'
-						? `${pending.monsterName} corruption rewards`
-						: `${pending.monsterName} rewards`,
-				log: log.length ? log : ['Claimed rewards.']
+				label: `${pending.monsterName} rewards`,
+				log: log.length ? log : ['Claimed monster rewards.']
 			};
 			return success(state);
 		}
@@ -3108,7 +3057,6 @@ export function buildSessionProjection(
 			handDraws: isOwner ? player.handDraws : [],
 			pendingDraw: isOwner ? player.pendingDraw : null,
 			pendingReward: isOwner ? player.pendingReward : null,
-			pendingRewardQueue: isOwner ? (player.pendingRewardQueue ?? []) : [],
 			pendingAwakenReward: isOwner ? player.pendingAwakenReward : null,
 			// The corruption-discard obligation is the owner's private business; other
 			// seats only see the resulting (already-trimmed) tableau, never the debt.

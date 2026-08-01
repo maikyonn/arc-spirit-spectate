@@ -4,6 +4,6 @@ import type { ClassAbility } from './types';
 export const ability: ClassAbility[] = [
 	{
 		on: 'inCombat',
-		breakpoints: [{ count: 1, actions: [{ kind: 'combatBonusFromBrokenBarrier', max: 4 }] }]
+		breakpoints: [{ count: 1, actions: [{ kind: 'combatBonusFromArcaneBlood', max: 4 }] }]
 	}
 ];

@@ -22,7 +22,7 @@ function player(overrides: Partial<PlayerSnapshot>): PlayerSnapshot {
 		ttsUsername: null,
 		selectedCharacter: 'Aurelia',
 		navigationDestination: null,
-		brokenBarrier: 0,
+		blood: 0,
 		victoryPoints: 0,
 		barrier: 4,
 		maxTokens: 4,

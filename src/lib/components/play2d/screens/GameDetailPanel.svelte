@@ -171,8 +171,8 @@
 								<span class="ps-lbl">Barrier</span>
 							</div>
 							<div class="ps">
-								<span class="ps-num">{s.brokenBarrier}</span>
-								<span class="ps-lbl">Broken Barrier</span>
+								<span class="ps-num">{s.blood}</span>
+								<span class="ps-lbl">Blood</span>
 							</div>
 						</div>
 					</li>

@@ -36,8 +36,6 @@ export type RewardIconMeaning =
 	| { kind: 'wildcardRelic'; label: string }
 	/** Victory points (monster-kill reward token). */
 	| { kind: 'victoryPoints'; amount: number; label: string }
-	/** Arcane Blood resource (monster corruption/kill reward token). */
-	| { kind: 'arcaneBlood'; amount: number; label: string }
 	/** "Any basic rune" gain wildcard — choose one of the four origin runes. */
 	| { kind: 'anyRune'; label: string };
 
@@ -60,7 +58,6 @@ const VP_FIVE_ICON = '9cf8e1dd-55e0-4926-8dc8-2fb5b7b96bd4';
 const VICTORY_POINT_ICON = '70792514-aa43-4526-a7a4-0f1e4ca55d71';
 // "Any basic rune" wildcard gain — choose one of the four origin runes.
 const ANY_RUNE_ICON = '36aab6c9-b98c-4e84-b097-e743f45dde82';
-const ARCANE_BLOOD_ICON = 'd6f613f7-deba-4517-8570-7503cebabc7b';
 
 /**
  * Reward-icon → meaning. The single source of truth for reward-row semantics.
@@ -90,7 +87,6 @@ export const REWARD_ICON_SEMANTICS: Record<string, RewardIconMeaning> = {
 	[VP_TWO_ICON]: { kind: 'victoryPoints', amount: 2, label: '2 Victory Points' },
 	[VP_THREE_ICON]: { kind: 'victoryPoints', amount: 3, label: '3 Victory Points' },
 	[VP_FIVE_ICON]: { kind: 'victoryPoints', amount: 5, label: '5 Victory Points' },
-	[ARCANE_BLOOD_ICON]: { kind: 'arcaneBlood', amount: 1, label: 'Arcane Blood' },
 
 	// "Any basic rune" wildcard gain — choose one of the four origin runes.
 	[ANY_RUNE_ICON]: { kind: 'anyRune', label: 'Any basic rune' },
@@ -277,8 +273,6 @@ export type GainEffect =
 	| { type: 'rune'; rune: ResolvedRune }
 	/** Victory points (monster-kill reward). */
 	| { type: 'vp'; amount: number }
-	/** Persistent Arcane Blood resource. */
-	| { type: 'arcaneBlood'; amount: number }
 	/** Player/bot picks one of `options` (an "or" gain). */
 	| { type: 'chooseRune'; options: ResolvedRune[] };
 
@@ -349,8 +343,6 @@ function gainEffectFor(token: RewardIconToken): GainEffect | null {
 			return { type: 'restoreBarrier', amount: 1 };
 		case 'victoryPoints':
 			return { type: 'vp', amount: m.amount };
-		case 'arcaneBlood':
-			return { type: 'arcaneBlood', amount: m.amount };
 		case 'anyRune':
 			return { type: 'chooseRune', options: originRuneOptions() };
 		case 'originRune':

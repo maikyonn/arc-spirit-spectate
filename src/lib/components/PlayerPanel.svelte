@@ -6,7 +6,7 @@
 		playerColor: 'Red' | 'Blue' | 'Orange' | 'Green' | 'Purple' | 'Yellow';
 		characterName: string;
 		spirits: Spirit[];
-		brokenBarrier: number;
+		blood: number;
 		barrier: number;
 		statusLevel: number;
 		statusToken: string | null;
@@ -72,7 +72,7 @@
 		playerColor,
 		characterName,
 		spirits,
-		brokenBarrier,
+		blood,
 		barrier,
 		statusLevel,
 		statusToken,
@@ -174,9 +174,9 @@
 						<span class="stat-hero-num" style="color: var(--brand-amber)">{victoryPoints}</span>
 						<span class="stat-hero-label">VP</span>
 					</div>
-					<div class="stat-hero" title="Broken Barrier">
-						<span class="stat-hero-num" style="color: var(--color-blood)">{brokenBarrier}</span>
-						<span class="stat-hero-label">BRK</span>
+					<div class="stat-hero" title="Arcane Blood">
+						<span class="stat-hero-num" style="color: var(--color-blood)">{blood}</span>
+						<span class="stat-hero-label">BLD</span>
 					</div>
 					<div class="stat-hero" title="Barrier">
 						<span class="stat-hero-num" style="color: var(--brand-cyan)">{barrier}</span>

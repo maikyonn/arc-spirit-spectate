@@ -65,10 +65,8 @@ interface MonsterRow {
 	damage: number | null;
 	barrier: number | null;
 	reward_track: unknown[] | null;
-	corruption_reward_track: unknown[] | null;
 	dice_pool: unknown[] | null;
 	choose_amount: number | null;
-	corruption_choose_amount: number | null;
 }
 interface GuardianRow {
 	id: string;
@@ -149,7 +147,7 @@ export async function loadCatalog(): Promise<PlayCatalog> {
 		db
 			.from(TABLES.MONSTERS)
 			.select(
-				'id, name, stage, order_num, damage, barrier, reward_track, corruption_reward_track, dice_pool, choose_amount, corruption_choose_amount'
+				'id, name, stage, order_num, damage, barrier, reward_track, dice_pool, choose_amount'
 			),
 		db.from(TABLES.GUARDIANS).select('id, name, origin_id'),
 		db.from(TABLES.CLASSES).select('id, name, position, class_type, is_special, effect_schema'),
@@ -276,13 +274,8 @@ export async function loadCatalog(): Promise<PlayCatalog> {
 				damage: typeof m.damage === 'number' ? m.damage : 0,
 				barrier: typeof m.barrier === 'number' ? m.barrier : 1,
 				rewardTrack: Array.isArray(m.reward_track) ? (m.reward_track as string[]) : [],
-				corruptionRewardTrack: Array.isArray(m.corruption_reward_track)
-					? (m.corruption_reward_track as string[])
-					: [],
 				dicePool: Array.isArray(m.dice_pool) ? (m.dice_pool as string[]) : [],
 				chooseAmount: typeof m.choose_amount === 'number' ? m.choose_amount : 2,
-				corruptionChooseAmount:
-					typeof m.corruption_choose_amount === 'number' ? m.corruption_choose_amount : 2,
 				stage: typeof m.stage === 'number' ? m.stage : Number(m.stage) || 1,
 				order: typeof m.order_num === 'number' ? m.order_num : 0
 			}))
