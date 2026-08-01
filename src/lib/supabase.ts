@@ -35,7 +35,7 @@ import type {
 	OriginTrait,
 	PlayerFeedback,
 	PlayerBarrierTotalsRow,
-	PlayerBloodTotalsRow,
+	PlayerBrokenBarrierTotalsRow,
 	PlayerDiceEntry,
 	PlayerFavoriteSpiritsRow,
 	PlayerStatsRow,
@@ -78,8 +78,9 @@ export const TABLES = {
 	PLAYER_FAVORITE_SPIRITS_BY_KEY: 'player_favorite_spirits_by_key',
 	PLAYER_BARRIER_TOTALS_VERIFIED: 'player_barrier_totals_verified',
 	PLAYER_BARRIER_TOTALS_BY_KEY: 'player_barrier_totals_by_key',
-	PLAYER_BLOOD_TOTALS_VERIFIED: 'player_blood_totals_verified',
-	PLAYER_BLOOD_TOTALS_BY_KEY: 'player_blood_totals_by_key',
+	// Legacy database view names; application code uses Broken Barrier terminology.
+	PLAYER_BROKEN_BARRIER_TOTALS_VERIFIED: 'player_blood_totals_verified',
+	PLAYER_BROKEN_BARRIER_TOTALS_BY_KEY: 'player_blood_totals_by_key',
 	COMPOSITION_TAG_STATS_VERIFIED: 'composition_tag_stats_verified',
 	COMPOSITION_TAG_OCCURRENCES_VERIFIED: 'composition_tag_occurrences_verified',
 	CHARACTER_STATS_VERIFIED: 'character_stats_verified',
@@ -240,7 +241,9 @@ export function unwrapGameSnapshotRow(row: GameSnapshotRow): GameSnapshot {
 		scenario: parseJsonColumn<GameSnapshot['scenario']>(row.scenario, null),
 		player_color: row.player_color,
 		selected_character: row.selected_character,
-		blood: row.blood,
+		// `blood` is the immutable legacy database column; expose current terminology above
+		// this persistence boundary.
+		broken_barrier: row.blood,
 		victory_points: row.victory_points,
 		barrier: row.barrier,
 		max_tokens: row.max_tokens ?? 4,
@@ -679,29 +682,29 @@ export async function fetchPlayerBarrierTotalsByUsernameKey(
 	};
 }
 
-export async function fetchPlayerBloodTotalsByUsernameKey(
+export async function fetchPlayerBrokenBarrierTotalsByUsernameKey(
 	usernameKey: string
 ): Promise<{ gained: number; spent: number } | null> {
 	const normalized = usernameKey.trim().toLowerCase();
 	if (!normalized) return null;
 
 	const { data, error: fetchError } = await supabase
-		.from(TABLES.PLAYER_BLOOD_TOTALS_BY_KEY)
-		.select('blood_gained, blood_spent')
+		.from(TABLES.PLAYER_BROKEN_BARRIER_TOTALS_BY_KEY)
+		.select('broken_barrier_gained:blood_gained, broken_barrier_restored:blood_spent')
 		.eq('username_key', normalized)
 		.limit(1)
 		.maybeSingle();
 
 	if (fetchError) {
-		throw new Error(`Failed to fetch blood totals: ${fetchError.message}`);
+		throw new Error(`Failed to fetch broken-barrier totals: ${fetchError.message}`);
 	}
 
-	const row = (data as Omit<PlayerBloodTotalsRow, 'username'> | null) ?? null;
+	const row = (data as Omit<PlayerBrokenBarrierTotalsRow, 'username'> | null) ?? null;
 	if (!row) return null;
 
 	return {
-		gained: Number(row.blood_gained ?? 0),
-		spent: Number(row.blood_spent ?? 0)
+		gained: Number(row.broken_barrier_gained ?? 0),
+		spent: Number(row.broken_barrier_restored ?? 0)
 	};
 }
 
@@ -807,28 +810,28 @@ export async function fetchPlayerBarrierTotalsVerified(
 	};
 }
 
-export async function fetchPlayerBloodTotalsVerified(
+export async function fetchPlayerBrokenBarrierTotalsVerified(
 	username: string
 ): Promise<{ gained: number; spent: number } | null> {
 	const normalized = username.trim();
 	if (!normalized) return null;
 
 	const { data, error: fetchError } = await supabase
-		.from(TABLES.PLAYER_BLOOD_TOTALS_VERIFIED)
-		.select('username, blood_gained, blood_spent')
+		.from(TABLES.PLAYER_BROKEN_BARRIER_TOTALS_VERIFIED)
+		.select('username, broken_barrier_gained:blood_gained, broken_barrier_restored:blood_spent')
 		.eq('username', normalized)
 		.limit(1);
 
 	if (fetchError) {
-		throw new Error(`Failed to fetch blood totals: ${fetchError.message}`);
+		throw new Error(`Failed to fetch broken-barrier totals: ${fetchError.message}`);
 	}
 
-	const row = (data as PlayerBloodTotalsRow[] | null)?.[0] ?? null;
+	const row = (data as PlayerBrokenBarrierTotalsRow[] | null)?.[0] ?? null;
 	if (!row) return null;
 
 	return {
-		gained: Number(row.blood_gained ?? 0),
-		spent: Number(row.blood_spent ?? 0)
+		gained: Number(row.broken_barrier_gained ?? 0),
+		spent: Number(row.broken_barrier_restored ?? 0)
 	};
 }
 
@@ -998,7 +1001,9 @@ export async function fetchAssetsData(): Promise<AssetsData> {
 			),
 		supabaseAssets
 			.from(TABLES.MONSTERS)
-			.select('id, name, stage, order_num, damage, barrier, card_image_path, reward_track, dice_pool, choose_amount'),
+			.select(
+				'id, name, stage, order_num, damage, barrier, card_image_path, reward_track, corruption_reward_track, dice_pool, choose_amount, corruption_choose_amount'
+			),
 		supabaseAssets
 			.from(TABLES.ICON_POOL)
 			.select('id, name, file_path, tags')

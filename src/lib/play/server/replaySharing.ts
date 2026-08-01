@@ -134,7 +134,7 @@ export function sanitizeReplaySnapshot(row: Record<string, unknown>): PublicRepl
 }
 
 const FORBIDDEN_FRAME_KEYS = new Set([
-	'roomCode', 'stateHash', 'viewer', 'memberId', 'handDraws', 'pendingDraw', 'pendingReward',
+	'roomCode', 'stateHash', 'viewer', 'memberId', 'handDraws', 'pendingDraw', 'pendingReward', 'pendingRewardQueue',
 	'pendingAwakenReward', 'pendingCorruptionDiscard', 'pendingDestination', 'manualPrompts',
 	'pendingDecisions', 'lastAction', 'unplacedAugments', 'scenario', 'rng'
 ]);

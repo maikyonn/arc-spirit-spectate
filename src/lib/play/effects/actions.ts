@@ -182,6 +182,12 @@ export function runAction(ctx: EffectContext, action: EffectAction, multiplier =
 			log.push(`Gained ${amount} VP.`);
 			break;
 		}
+		case 'gainArcaneBlood': {
+			const amount = scaled(action.amount);
+			player.arcaneBlood = (player.arcaneBlood ?? 0) + amount;
+			log.push(`Gained ${amount} Arcane Blood.`);
+			break;
+		}
 		case 'gainInitiative': {
 			const amount = scaled(action.amount);
 			player.initiative += amount;
@@ -206,11 +212,11 @@ export function runAction(ctx: EffectContext, action: EffectAction, multiplier =
 			log.push(`Gained +${amount} combat damage.`);
 			break;
 		}
-		case 'combatBonusFromArcaneBlood': {
+		case 'combatBonusFromBrokenBarrier': {
 			// Live-pool bonus: +1 damage per broken barrier, capped at `max` (Blood Hunter).
 			// Broken barrier is the corrupted side of the max barrier pool (maxBarrier − barrier).
-			const arcaneBlood = player.maxBarrier - player.barrier;
-			const amount = Math.min(arcaneBlood, action.max);
+			const brokenBarrier = player.maxBarrier - player.barrier;
+			const amount = Math.min(brokenBarrier, action.max);
 			if (amount > 0) {
 				player.combatDamageBonus += amount;
 				log.push(`Gained +${amount} combat damage from broken barrier.`);
@@ -254,12 +260,12 @@ export function runAction(ctx: EffectContext, action: EffectAction, multiplier =
 			log.push(`Gained ${amount} relic(s).`);
 			break;
 		}
-		case 'purifyArcaneBlood': {
+		case 'purifyBrokenBarrier': {
 			// Purify: flip broken barrier tokens back to the barrier side (restore barrier).
-			const arcaneBlood = player.maxBarrier - player.barrier;
+			const brokenBarrier = player.maxBarrier - player.barrier;
 			const amount =
 				action.fraction === 'halfRoundUp'
-					? Math.ceil(arcaneBlood / 2)
+					? Math.ceil(brokenBarrier / 2)
 					: scaled(action.amount ?? 0);
 			const before = player.barrier;
 			player.barrier = Math.min(player.maxBarrier, player.barrier + amount);

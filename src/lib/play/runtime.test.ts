@@ -1331,12 +1331,12 @@ describe('play runtime', () => {
 		expect(state.players.Red!.spirits.some((s) => s.slotIndex === target.slotIndex)).toBe(true);
 	});
 
-	test('adjustBarrier / adjustBrokenBarrier keep arcane blood === maxTokens − barrier', () => {
+	test('adjustBarrier / adjustBrokenBarrier keep brokenBarrier === maxBarrier − barrier', () => {
 		const lobby = withLobbySelections();
 		const started = applyGameCommand(lobby, { ...HOST, seatColor: 'Red' }, { type: 'startGame' }, CATALOG);
 		if (!started.ok) throw new Error(started.error.message);
 
-		// Lower health → arcane blood (the corrupted side) appears; invariant must hold.
+		// Lower health → broken barrier appears; invariant must hold.
 		let s = applyGameCommand(
 			started.state,
 			{ ...HOST, seatColor: 'Red' },
@@ -1349,7 +1349,7 @@ describe('play runtime', () => {
 		expect(p.brokenBarrier).toBe(p.maxBarrier - p.barrier);
 		expect(p.brokenBarrier).toBeGreaterThan(0);
 
-		// Bump arcane blood directly → the health side re-derives, invariant still holds.
+		// Bump broken barrier directly → the intact side re-derives, invariant still holds.
 		s = applyGameCommand(s.state, { ...HOST, seatColor: 'Red' }, { type: 'adjustBrokenBarrier', amount: 1 }, CATALOG);
 		expect(s.ok).toBe(true);
 		if (!s.ok) return;

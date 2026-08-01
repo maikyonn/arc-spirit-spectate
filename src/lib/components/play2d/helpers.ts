@@ -8,8 +8,9 @@ import type { getAssetState } from '$lib/stores/assetStore.svelte';
 /** icon_pool ids for the core resource icons shown on the player bar. */
 export const RESOURCE_ICON_IDS = {
 	vp: '70792514-aa43-4526-a7a4-0f1e4ca55d71', // victory_point
+	arcaneBlood: 'd6f613f7-deba-4517-8570-7503cebabc7b',
 	barrier: '6746f875-a1bc-453c-94b5-718d6ebeb025', // barrier / potential token
-	blood: '80f1d5a8-812e-4bb2-b341-68e69d9a3e38', // arcane_injection (Arcane Blood)
+	brokenBarrier: '80f1d5a8-812e-4bb2-b341-68e69d9a3e38',
 	rune: '36aab6c9-b98c-4e84-b097-e743f45dde82' // Rune: Any Rune (generic)
 } as const;
 

@@ -1,8 +1,9 @@
 /**
- * Fighter — declarative `onRest` breakpoint ladder.
+ * Fighter — declarative Rest and monster-kill breakpoint ladders.
  *
  * DB-intended behavior (source of truth):
  *   On Rest: 2/3/4/5 Fighter traits -> gain 1/2/5/10 Basic Attack dice.
+ *   On Monster Kill: 2 traits -> gain 1 Arcane Blood; 5 traits -> gain 2 total.
  *
  * Only the highest qualifying numeric breakpoint fires (selectBreakpoint picks the
  * single highest threshold <= count), so the grants are NOT cumulative across rungs.
@@ -14,11 +15,25 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { fire } from './testHelpers';
+import { applyTrigger } from '../apply';
+import { fire, makePlayer, makeState, spirit } from './testHelpers';
 
 /** Fire onRest for a Red player whose single awakened spirit carries N Fighter traits. */
 function rest(count: number) {
 	return fire({ Fighter: count }, 'onRest');
+}
+
+/** Fire the combat-result trigger for a player carrying N awakened Fighter traits. */
+function monsterCombat(count: number, killed: boolean, faceDown = false) {
+	const player = makePlayer({
+		spirits: [spirit(1, { Fighter: count }, { faceDown })]
+	});
+	const state = makeState(player);
+	const log: string[] = [];
+	applyTrigger(state, 'Red', 'onMonsterKill', log, {
+		combat: { dealt: killed ? 5 : 1, overkill: 0, killed }
+	});
+	return { player, log };
 }
 
 describe('Fighter', () => {
@@ -103,5 +118,39 @@ describe('Fighter', () => {
 		const { player, log } = fire({ Fighter: 5 }, 'onCultivate');
 		expect(player.attackDice.length).toBe(0);
 		expect(log.some((l) => l.startsWith('Fighter:'))).toBe(false);
+	});
+
+	it('2 through 4 traits: gains 1 Arcane Blood when a monster is killed', () => {
+		for (const count of [2, 3, 4]) {
+			const { player, log } = monsterCombat(count, true);
+			expect(player.arcaneBlood).toBe(1);
+			expect(log).toContain('Fighter: Gained 1 Arcane Blood.');
+		}
+	});
+
+	it('5 or more traits: gains 2 total Arcane Blood when a monster is killed', () => {
+		for (const count of [5, 6]) {
+			const { player, log } = monsterCombat(count, true);
+			expect(player.arcaneBlood).toBe(2);
+			expect(log).toContain('Fighter: Gained 2 Arcane Blood.');
+		}
+	});
+
+	it('does not gain Arcane Blood below 2 Fighter traits', () => {
+		const { player, log } = monsterCombat(1, true);
+		expect(player.arcaneBlood ?? 0).toBe(0);
+		expect(log.some((line) => line.startsWith('Fighter:'))).toBe(false);
+	});
+
+	it('does not gain Arcane Blood when the monster survives', () => {
+		const { player, log } = monsterCombat(4, false);
+		expect(player.arcaneBlood ?? 0).toBe(0);
+		expect(log.some((line) => line.startsWith('Fighter:'))).toBe(false);
+	});
+
+	it('does not gain Arcane Blood from a face-down Fighter spirit', () => {
+		const { player, log } = monsterCombat(4, true, true);
+		expect(player.arcaneBlood ?? 0).toBe(0);
+		expect(log.some((line) => line.startsWith('Fighter:'))).toBe(false);
 	});
 });

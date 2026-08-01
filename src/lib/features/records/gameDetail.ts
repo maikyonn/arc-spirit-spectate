@@ -12,7 +12,7 @@ export interface FinalStanding {
 	character: string;
 	victoryPoints: number;
 	barrier: number;
-	blood: number;
+	brokenBarrier: number;
 }
 
 export interface GameFinalState {
@@ -28,13 +28,13 @@ function toStanding(s: GameSnapshot, placement: number): FinalStanding {
 		character: s.selected_character,
 		victoryPoints: s.victory_points,
 		barrier: s.barrier,
-		blood: s.blood
+		brokenBarrier: s.broken_barrier
 	};
 }
 
 /**
  * Load the final standings for a game. Ranks players by victory points desc,
- * breaking ties by barrier then blood (mirrors the table's tie ordering).
+ * breaking ties by barrier then broken barrier (mirrors the table's tie ordering).
  * Returns null when the game has no snapshots.
  */
 export async function loadGameFinalState(gameId: string): Promise<GameFinalState | null> {
@@ -48,7 +48,7 @@ export async function loadGameFinalState(gameId: string): Promise<GameFinalState
 	const ranked = [...snapshots].sort((a, b) => {
 		if (b.victory_points !== a.victory_points) return b.victory_points - a.victory_points;
 		if (b.barrier !== a.barrier) return b.barrier - a.barrier;
-		return b.blood - a.blood;
+		return b.broken_barrier - a.broken_barrier;
 	});
 
 	return {

@@ -47,6 +47,7 @@ export type EffectAction =
 	| { kind: 'restoreBarrier'; amount: number; includeColocated?: boolean }
 	// ── New kinds (P1 framework) ────────────────────────────────────────────
 	| { kind: 'gainVP'; amount: number }
+	| { kind: 'gainArcaneBlood'; amount: number }
 	| { kind: 'gainInitiative'; amount: number }
 	| { kind: 'reduceIncomingDamage'; amount: number }
 	| { kind: 'deflect'; amount: number }
@@ -57,7 +58,7 @@ export type EffectAction =
 	 * Purify broken barrier. A fixed `amount`, or `fraction: 'halfRoundUp'` to
 	 * remove half the current broken barrier rounded up (Purifier's rest effect).
 	 */
-	| { kind: 'purifyArcaneBlood'; amount?: number; fraction?: 'halfRoundUp' }
+	| { kind: 'purifyBrokenBarrier'; amount?: number; fraction?: 'halfRoundUp' }
 	// ── P3 kinds (Rest / Cultivate coverage) ────────────────────────────────
 	/** Set the passive stun-immunity flag (Soul Weaver). */
 	| { kind: 'setStunImmune' }
@@ -72,7 +73,7 @@ export type EffectAction =
 	 * is computed at trigger time from the live pool, so it can't be expressed
 	 * with the static `combatBonus` amount.
 	 */
-	| { kind: 'combatBonusFromArcaneBlood'; max: number }
+	| { kind: 'combatBonusFromBrokenBarrier'; max: number }
 	// ── P5 kinds (trigger-wiring + win-con coverage) ─────────────────────────
 	/**
 	 * Set the per-turn rune-doubling flag (Rune Traveler). When `includeColocated`

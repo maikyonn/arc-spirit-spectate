@@ -1062,14 +1062,16 @@
 					</div>
 				{:else if pendingReward}
 					<!-- W2a: the loot moment as a stage takeover (medallion fan + pick meter). -->
-					<MonsterRewardTakeover
-						reward={pendingReward}
-						resolved={seatAffordances?.pendingReward ?? null}
-						{assets}
-						accent={myAccent}
-						{busy}
-						onClaim={onClaimReward}
-					/>
+					{#key `${pendingReward.rewardKind ?? 'monsterKill'}:${pendingReward.monsterId}:${pendingReward.rewardTrack.join(',')}`}
+						<MonsterRewardTakeover
+							reward={pendingReward}
+							resolved={seatAffordances?.pendingReward ?? null}
+							{assets}
+							accent={myAccent}
+							{busy}
+							onClaim={onClaimReward}
+						/>
+					{/key}
 				{:else if activeAction === 'rest' || activeAction === 'cultivate' || activeAction === 'reward'}
 					<ActionResult result={myPlayer?.lastAction ?? null} {onContinue} />
 				{:else if myReady}

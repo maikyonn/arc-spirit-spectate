@@ -22,6 +22,7 @@ const VP2 = '22e7f408-fa65-417e-a555-56ad87ecb428'; // +2 VP
 const VP3 = '54a61c34-6e05-44df-a4d1-115e004af31e'; // +3 VP
 const VP5 = '9cf8e1dd-55e0-4926-8dc8-2fb5b7b96bd4'; // +5 VP
 const ABYSS_SUMMON = '12ff8ffe-20cb-4a86-a493-5e4ff8b9dc3e';
+const ARCANE_BLOOD = 'd6f613f7-deba-4517-8570-7503cebabc7b';
 const AVATAR_BARRIER = '16daf8be-6ae0-4ace-b70c-cbb30e357664';
 const ANY_RELIC = '6a85e06a-52cc-483c-aa59-38395a377307';
 const ANY_RUNE = '36aab6c9-b98c-4e84-b097-e743f45dde82';
@@ -39,7 +40,8 @@ const MONSTERS_V2_REWARD_ICONS = [
 	VP3,
 	VP5,
 	ANY_RELIC,
-	ANY_RUNE
+	ANY_RUNE,
+	ARCANE_BLOOD
 ];
 
 // The broader reward vocabulary (monsters_v2 + legacy monsters), all must resolve.
@@ -75,8 +77,8 @@ const CATALOG: PlayCatalog = {
 	// A second, unkillable apex rung keeps m-1 NON-final: defeating the final monster now
 	// saves the spirit world and ends the game, which these reward-flow tests don't want.
 	monsters: [
-		{ id: 'm-1', name: 'Abyss Maw', damage: 1, barrier: 1, rewardTrack: REWARD_TRACK, dicePool: [], chooseAmount: 2, stage: 1, order: 0 },
-		{ id: 'm-apex', name: 'Abyss Apex', damage: 9, barrier: 99, rewardTrack: REWARD_TRACK, dicePool: [], chooseAmount: 2, stage: 1, order: 1 }
+		{ id: 'm-1', name: 'Abyss Maw', damage: 1, barrier: 1, rewardTrack: REWARD_TRACK, corruptionRewardTrack: [ARCANE_BLOOD, ARCANE_BLOOD, ABYSS_SUMMON], dicePool: [], chooseAmount: 2, corruptionChooseAmount: 2, stage: 1, order: 0 },
+		{ id: 'm-apex', name: 'Abyss Apex', damage: 9, barrier: 99, rewardTrack: REWARD_TRACK, corruptionRewardTrack: [ARCANE_BLOOD, ARCANE_BLOOD, ABYSS_SUMMON], dicePool: [], chooseAmount: 2, corruptionChooseAmount: 2, stage: 1, order: 1 }
 	],
 	locations: []
 };
@@ -151,6 +153,10 @@ describe('buildMonsterRewards / monsterGainFor (reward semantics)', () => {
 		expect(monsterGainFor(ABYSS_SUMMON)).toEqual({ type: 'action', action: 'abyssSummon' });
 	});
 
+	test('the Arcane Blood token resolves to one persistent resource', () => {
+		expect(monsterGainFor(ARCANE_BLOOD)).toEqual({ type: 'arcaneBlood', amount: 1 });
+	});
+
 	test('the Avatar Barrier token gains maximum barrier rather than restoring it', () => {
 		expect(monsterGainFor(AVATAR_BARRIER)).toEqual({ type: 'gainMaxBarrier', amount: 1 });
 	});
@@ -197,6 +203,48 @@ describe('buildMonsterRewards / monsterGainFor (reward semantics)', () => {
 });
 
 describe('monster-kill reward flow (engine)', () => {
+	test('corrupting and killing in one simultaneous fight grants both independent choices', () => {
+		let s = atAbyss();
+		const red = s.players.Red!;
+		red.barrier = 1;
+		red.spirits = [
+			{
+				slotIndex: 1,
+				id: 'simultaneous-spirit',
+				name: 'Sharpshooter Spirit',
+				cost: 1,
+				classes: { Sharpshooter: 1 },
+				origins: {},
+				isFaceDown: false
+			}
+		];
+
+		s = apply(s, RED, { type: 'startCombat' });
+		expect(s.combats.at(-1)?.killed).toBe(true);
+		expect(s.players.Red!.pendingReward).toMatchObject({
+			rewardKind: 'monsterCorruption',
+			rewardTrack: [ARCANE_BLOOD, ARCANE_BLOOD, ABYSS_SUMMON],
+			chooseAmount: 2,
+			exact: true
+		});
+		expect(s.players.Red!.pendingRewardQueue).toHaveLength(1);
+		expect(s.players.Red!.pendingRewardQueue?.[0]).toMatchObject({ rewardKind: 'monsterKill' });
+
+		const tooFew = tryApply(s, RED, { type: 'resolveMonsterReward', picks: [0] });
+		expect(tooFew.ok).toBe(false);
+		if (!tooFew.ok) expect(tooFew.error.code).toBe('wrong_count');
+
+		s = apply(s, RED, { type: 'resolveMonsterReward', picks: [0, 1] });
+		expect(s.players.Red!.arcaneBlood).toBe(2);
+		expect(s.players.Red!.pendingReward?.rewardKind).toBe('monsterKill');
+
+		s = apply(s, RED, { type: 'resolveMonsterReward', picks: [0, 1] });
+		expect(s.players.Red!.victoryPoints).toBe(4);
+		expect(s.players.Red!.arcaneBlood).toBe(2);
+		expect(s.players.Red!.pendingReward).toBeNull();
+		expect(s.players.Red!.pendingRewardQueue).toEqual([]);
+	});
+
 	test('killing the monster opens a 2-pick reward selection from the full pool', () => {
 		const s = killMonster();
 		const pending = s.players.Red!.pendingReward!;

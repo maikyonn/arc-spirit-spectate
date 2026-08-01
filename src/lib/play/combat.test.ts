@@ -136,7 +136,7 @@ describe('takeDamage', () => {
 	});
 
 	it('corrupts when the hit empties the barrier EXACTLY (0 health), not just on overkill', () => {
-		// barrier 3, take exactly 3 → barrier hits 0 (all potential tokens on the Arcane Blood
+		// barrier 3, take exactly 3 → barrier hits 0 (all potential tokens on the Broken Barrier
 		// side). Under the old overkill rule (amount > barrier) this did NOT corrupt; now it must.
 		const p = makePlayer({
 			barrier: 3,
@@ -173,7 +173,7 @@ describe('takeDamage', () => {
 		expect(r.corrupted).toBe(true);
 		expect(p.statusLevel).toBe(1);
 		expect(p.statusToken).toBe('Tainted');
-		// Corruption now INSTANTLY restores all health (arcane blood flips back to barrier),
+		// Corruption now INSTANTLY restores all health (broken barrier flips back to barrier),
 		// then bills the escalating sacrifice in forced spirit discards.
 		expect(p.barrier).toBe(4); // healed to maxTokens
 		expect(p.brokenBarrier).toBe(0);
@@ -694,8 +694,8 @@ describe('Golem of Wishes (inCombat)', () => {
 });
 
 describe('Blood Hunter (inCombat)', () => {
-	it('deals +1 damage per Arcane Blood, capped at 4', () => {
-		// Arcane blood = maxTokens − barrier ⇒ 10 − 4 = 6.
+	it('deals +1 damage per Broken Barrier, capped at 4', () => {
+		// Broken Barrier = maxBarrier − barrier ⇒ 10 − 4 = 6.
 		const p = makePlayer({
 			barrier: 4,
 			maxBarrier: 10,
@@ -708,7 +708,7 @@ describe('Blood Hunter (inCombat)', () => {
 	});
 
 	it('scales below the cap', () => {
-		// Arcane blood = maxTokens − barrier ⇒ 6 − 4 = 2.
+		// Broken Barrier = maxBarrier − barrier ⇒ 6 − 4 = 2.
 		const p = makePlayer({
 			barrier: 4,
 			maxBarrier: 6,

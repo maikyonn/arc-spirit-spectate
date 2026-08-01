@@ -57,6 +57,7 @@
 		}))
 	);
 	const max = $derived(Math.min(resolved?.chooseAmount ?? reward.chooseAmount, cards.length));
+	const isCorruptionReward = $derived(reward.rewardKind === 'monsterCorruption');
 
 	const monsterArt = $derived.by(() => {
 		const byId = assets.monsterAssets.get(reward.monsterId);
@@ -126,12 +127,14 @@
 	{#snippet source()}
 		<SourcePanel
 			title={displayName(reward.monsterName)}
-			subtitle={`Defeated — claim ${max} reward${max === 1 ? '' : 's'}`}
+			subtitle={isCorruptionReward
+				? `Corrupted you — choose ${max}`
+				: `Defeated — claim ${max} reward${max === 1 ? '' : 's'}`}
 			image={monsterArt}
 			imageAlt={displayName(reward.monsterName)}
 			{accent}
 		>
-			<span class="victory-chip">Victory</span>
+			<span class="victory-chip">{isCorruptionReward ? 'Corruption' : 'Victory'}</span>
 		</SourcePanel>
 	{/snippet}
 

@@ -302,14 +302,14 @@ describe('new EffectAction kinds (via applyTrigger)', () => {
 		expect(p.relics).toBe(1);
 	});
 
-	it('purifyArcaneBlood heals arcane blood (clamped at full health)', () => {
+	it('purifyBrokenBarrier restores broken barrier (clamped at full health)', () => {
 		withSynthClass('SynthPurify', [
 			{
 				trigger: 'onRest',
-				breakpoints: [{ count: 1, actions: [{ kind: 'purifyArcaneBlood', amount: 5 }] }]
+				breakpoints: [{ count: 1, actions: [{ kind: 'purifyBrokenBarrier', amount: 5 }] }]
 			}
 		]);
-		// Start corrupted (arcane blood 2: maxTokens 6 − barrier 4); purify ≥2 ⇒ 0.
+		// Start with 2 broken barrier (maxBarrier 6 − barrier 4); purify ≥2 ⇒ 0.
 		const p = fireRest('SynthPurify', 1, { maxBarrier: 6, barrier: 4 });
 		expect(p.maxBarrier - p.barrier).toBe(0);
 	});

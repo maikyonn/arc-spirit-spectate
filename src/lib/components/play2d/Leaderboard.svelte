@@ -18,8 +18,9 @@
 	let { room, mySeat, assets, activeSeat = null, onSelectSeat }: Props = $props();
 
 	const vpIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.vp));
+	const arcaneBloodIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.arcaneBlood));
 	const barrierIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.barrier));
-	const brokenBarrierIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.blood));
+	const brokenBarrierIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.brokenBarrier));
 
 	const rows = $derived(
 		room.activeSeats
@@ -31,6 +32,7 @@
 					seat,
 					name: room.seats[seat]?.displayName ?? seat,
 					vp: player?.victoryPoints ?? 0,
+					arcaneBlood: player?.arcaneBlood ?? 0,
 					// Combat initiative — only meaningful (non-zero) during a fight; shown
 					// only when the player actually has some.
 					init: Math.max(0, player?.initiative ?? 0),
@@ -146,6 +148,14 @@
 								>{row.vp}</span
 							>
 						{/if}
+					</span>
+					<span
+						class="arcane-blood"
+						data-testid="lb-arcane-blood-{row.seat}"
+						title="Arcane Blood: {row.arcaneBlood}"
+					>
+						<span class="blood-num">{row.arcaneBlood}</span>
+						{#if arcaneBloodIcon}<img class="blood-ic" src={arcaneBloodIcon} alt="Arcane Blood" />{/if}
 					</span>
 					{#if row.atk > 0}
 						<span
@@ -528,6 +538,25 @@
 	}
 	.self-score {
 		gap: 5px;
+	}
+	.arcane-blood {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font-family: var(--font-display);
+		font-size: var(--lb-pts-size, 1.1rem);
+		font-variant-numeric: tabular-nums;
+		line-height: 1;
+		color: #f0a2b7;
+		filter: drop-shadow(0 0 4px rgba(177, 48, 74, 0.32));
+	}
+	.blood-ic {
+		width: 1.05em;
+		height: 1.05em;
+		object-fit: contain;
+	}
+	.lb-row.me .arcane-blood {
+		font-size: var(--lb-me-pts-size, 1.5rem);
 	}
 	/* Attack chip — the resting average roll damage (dice + Spirit Animal), shown to
 	   the left of the initiative chip. Coral, distinct from amber VP / cyan initiative. */

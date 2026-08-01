@@ -53,7 +53,7 @@ function rowsToPlayerSnapshots(rows: GameSnapshot[]): PlayerSnapshot[] {
 		ttsUsername: row.tts_username ?? null,
 		selectedCharacter: row.selected_character,
 		navigationDestination: row.navigation_destination ?? null,
-		blood: row.blood,
+		brokenBarrier: row.broken_barrier,
 		victoryPoints: row.victory_points,
 		barrier: row.barrier ?? 0,
 		maxTokens: row.max_tokens ?? 4,
@@ -116,7 +116,7 @@ async function fetchAllSnapshots(gameId: string): Promise<{
 			ttsUsername: snapshot.tts_username ?? null,
 			selectedCharacter: snapshot.selected_character,
 			navigationDestination: snapshot.navigation_destination ?? null,
-			blood: snapshot.blood,
+			brokenBarrier: snapshot.broken_barrier,
 			victoryPoints: snapshot.victory_points,
 			barrier: snapshot.barrier ?? 0,
 			maxTokens: snapshot.max_tokens ?? 4,
@@ -258,7 +258,7 @@ function handleInsertSnapshot(payload: RealtimePayload) {
 		ttsUsername: snapshot.tts_username ?? null,
 		selectedCharacter: snapshot.selected_character,
 		navigationDestination: snapshot.navigation_destination ?? null,
-		blood: snapshot.blood,
+		brokenBarrier: snapshot.broken_barrier,
 		victoryPoints: snapshot.victory_points,
 		barrier: snapshot.barrier ?? 0,
 		maxTokens: snapshot.max_tokens ?? 4,
@@ -361,7 +361,7 @@ function handleUpdateSnapshot(payload: RealtimePayload) {
 		ttsUsername: snapshot.tts_username ?? null,
 		selectedCharacter: snapshot.selected_character,
 		navigationDestination: snapshot.navigation_destination ?? null,
-		blood: snapshot.blood,
+		brokenBarrier: snapshot.broken_barrier,
 		victoryPoints: snapshot.victory_points,
 		barrier: snapshot.barrier ?? 0,
 		maxTokens: snapshot.max_tokens ?? 4,
@@ -543,11 +543,11 @@ export function cleanup() {
 // Build graph data from historical snapshots
 export function getGraphData(): Array<{
 	round: number;
-	players: Array<{ color: string; blood: number; victoryPoints: number; barrier: number }>;
+	players: Array<{ color: string; brokenBarrier: number; victoryPoints: number; barrier: number }>;
 }> {
 	const data: Array<{
 		round: number;
-		players: Array<{ color: string; blood: number; victoryPoints: number; barrier: number }>;
+		players: Array<{ color: string; brokenBarrier: number; victoryPoints: number; barrier: number }>;
 	}> = [];
 
 	const sortedRounds = Array.from(allRoundSnapshots.keys()).sort((a, b) => a - b);
@@ -559,7 +559,7 @@ export function getGraphData(): Array<{
 				round,
 				players: snapshots.map((s) => ({
 					color: s.playerColor,
-					blood: s.blood,
+					brokenBarrier: s.brokenBarrier,
 					victoryPoints: s.victoryPoints,
 					barrier: s.barrier
 				}))

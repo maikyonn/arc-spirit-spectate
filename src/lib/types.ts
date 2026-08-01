@@ -104,7 +104,7 @@ export interface PlayerSnapshot {
 	ttsUsername: string | null;
 	selectedCharacter: string; // Guardian name
 	navigationDestination: string | null;
-	blood: number;
+	brokenBarrier: number;
 	victoryPoints: number;
 	barrier: number;
 	maxTokens?: number; // potential token count / barrier slot capacity (0-10), default 4
@@ -126,7 +126,7 @@ export interface GameSnapshot {
 	scenario: string | { id?: string; name?: string; requested?: string | null } | null;
 	player_color: string;
 	selected_character: string;
-	blood: number;
+	broken_barrier: number;
 	victory_points: number;
 	barrier: number;
 	max_tokens: number;
@@ -246,8 +246,10 @@ export interface MonsterAsset {
 	barrier: number | null;
 	card_image_path: string | null;
 	reward_track?: string[] | null;
+	corruption_reward_track?: string[] | null;
 	dice_pool?: string[] | null;
 	choose_amount?: number | null;
+	corruption_choose_amount?: number | null;
 }
 
 // Icon pool entry (central icon registry)
@@ -497,10 +499,10 @@ export interface PlayerBarrierTotalsRow {
 	barrier_lost: number;
 }
 
-export interface PlayerBloodTotalsRow {
+export interface PlayerBrokenBarrierTotalsRow {
 	username: string;
-	blood_gained: number;
-	blood_spent: number;
+	broken_barrier_gained: number;
+	broken_barrier_restored: number;
 }
 
 export interface CompositionTagStatsRow {

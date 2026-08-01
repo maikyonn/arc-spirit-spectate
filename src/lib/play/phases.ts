@@ -125,6 +125,7 @@ function beginNavigation(state: PublicGameState): void {
 			player.actionsUsedThisRound = [];
 			player.lastAction = null;
 			player.pendingReward = null;
+			player.pendingRewardQueue = [];
 			// P5 per-turn / per-round flags reset at the start of each round, BEFORE
 			// onNavigate fires (so Rune Traveler's doubleRunes / Soul Weaver's redraw
 			// re-arm cleanly) and the corruption-tracking flags zero out for the new

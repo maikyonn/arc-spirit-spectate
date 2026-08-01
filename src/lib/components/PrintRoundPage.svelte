@@ -57,7 +57,7 @@
 
 					<div class="stats">
 						<div class="stat">
-							<span class="label">Blood</span><span class="value">{p.blood}</span>
+							<span class="label">Broken Barrier</span><span class="value">{p.brokenBarrier}</span>
 						</div>
 						<div class="stat">
 							<span class="label">Barrier</span><span class="value">{p.barrier}</span>

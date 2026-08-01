@@ -4,8 +4,8 @@
 		fetchGameResultsVerifiedForUsername,
 		fetchPlayerBarrierTotalsByUsernameKey,
 		fetchPlayerBarrierTotalsVerified,
-		fetchPlayerBloodTotalsByUsernameKey,
-		fetchPlayerBloodTotalsVerified,
+		fetchPlayerBrokenBarrierTotalsByUsernameKey,
+		fetchPlayerBrokenBarrierTotalsVerified,
 		fetchPlayerFavoriteSpiritsByUsernameKey,
 		fetchPlayerFavoriteSpiritsVerified,
 		fetchPlayerMatchResultsByUsernameKey,
@@ -47,7 +47,7 @@
 	let games = $state<GameResultRow[]>([]);
 	let favoriteSpirits = $state<FavoriteSpiritEntry[]>([]);
 	let barrierTotals = $state<{ gained: number; lost: number } | null>(null);
-	let bloodTotals = $state<{ gained: number; spent: number } | null>(null);
+	let brokenBarrierTotals = $state<{ gained: number; spent: number } | null>(null);
 	let leaderboardRank = $state<number | null>(null);
 	let totalRanked = $state(0);
 	let loading = $state(true);
@@ -94,30 +94,30 @@
 				leaderboardRank = idx >= 0 ? idx + 1 : null;
 			}
 			if (ratingRow) {
-				const [gameRows, favorites, barrier, blood] = await Promise.all([
+				const [gameRows, favorites, barrier, brokenBarrier] = await Promise.all([
 					fetchPlayerMatchResultsByUsernameKey(usernameKey),
 					fetchPlayerFavoriteSpiritsByUsernameKey(usernameKey),
 					fetchPlayerBarrierTotalsByUsernameKey(usernameKey),
-					fetchPlayerBloodTotalsByUsernameKey(usernameKey)
+					fetchPlayerBrokenBarrierTotalsByUsernameKey(usernameKey)
 				]);
 				stats = ratingRow;
 				games = gameRows;
 				favoriteSpirits = favorites;
 				barrierTotals = barrier;
-				bloodTotals = blood;
+				brokenBarrierTotals = brokenBarrier;
 			} else {
-				const [statsRow, gameRows, favorites, barrier, blood] = await Promise.all([
+				const [statsRow, gameRows, favorites, barrier, brokenBarrier] = await Promise.all([
 					fetchPlayerStatsVerifiedByUsername(username),
 					fetchGameResultsVerifiedForUsername(username),
 					fetchPlayerFavoriteSpiritsVerified(username),
 					fetchPlayerBarrierTotalsVerified(username),
-					fetchPlayerBloodTotalsVerified(username)
+					fetchPlayerBrokenBarrierTotalsVerified(username)
 				]);
 				stats = statsRow;
 				games = gameRows;
 				favoriteSpirits = favorites;
 				barrierTotals = barrier;
-				bloodTotals = blood;
+				brokenBarrierTotals = brokenBarrier;
 			}
 		} catch (e) {
 			console.error('Failed to load player profile:', e);
@@ -235,7 +235,7 @@
 				<div class="pace-stat">
 					<div class="ps-lab">Resources</div>
 					<div class="ps-row"><span class="ps-num"><span class="pos">+{barrierTotals?.gained ?? 0}</span> / <span class="neg">−{barrierTotals?.lost ?? 0}</span></span><span class="ps-tag">barrier</span></div>
-					<div class="ps-row"><span class="ps-num"><span class="pos">+{bloodTotals?.gained ?? 0}</span> / <span class="neg">−{bloodTotals?.spent ?? 0}</span></span><span class="ps-tag">blood</span></div>
+					<div class="ps-row"><span class="ps-num"><span class="pos">+{brokenBarrierTotals?.gained ?? 0}</span> / <span class="neg">−{brokenBarrierTotals?.spent ?? 0}</span></span><span class="ps-tag">broken barrier</span></div>
 				</div>
 			</div>
 		</section>
