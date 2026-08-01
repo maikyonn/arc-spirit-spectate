@@ -40,8 +40,7 @@ const MONSTERS_V2_REWARD_ICONS = [
 	VP3,
 	VP5,
 	ANY_RELIC,
-	ANY_RUNE,
-	ARCANE_BLOOD
+	ANY_RUNE
 ];
 
 // The broader reward vocabulary (monsters_v2 + legacy monsters), all must resolve.
