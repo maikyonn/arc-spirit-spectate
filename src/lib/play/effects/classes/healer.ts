@@ -2,7 +2,7 @@ import { runAction } from '../actions';
 import { nextId } from '../../rng';
 import type { ClassAbility, ClassDecisions } from './types';
 
-// Healer — "When summoned, restore two barriers. On rest, if you have 10 max barrier,
+// Healer — "When discarded, restore two barriers. On rest, if you have 10 max barrier,
 // you may restore 3 barrier and gain 1 VP."
 //
 // On-summon restore: like Sharpshooter's on-summon grant, this fires for the summoning
@@ -11,7 +11,7 @@ import type { ClassAbility, ClassDecisions } from './types';
 // 10 max barrier) still offers the restore-3 + 1 VP via the `healerRestore` resolver.
 export const ability: ClassAbility[] = [
 	{
-		on: 'onSpiritSummon',
+		on: 'onSpiritDiscard',
 		breakpoints: [{ count: 1, actions: [{ kind: 'restoreBarrier', amount: 2 }] }]
 	},
 	{

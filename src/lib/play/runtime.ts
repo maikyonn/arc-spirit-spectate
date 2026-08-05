@@ -60,11 +60,11 @@ import {
 } from './combat';
 import { applyTrigger, applyCultivate, applyRest, awakenedClassCounts } from './effects/apply';
 import { runAction, GENERIC_AUGMENT_RUNE_ID } from './effects/actions';
-import { augmentCapacityForSpirit, isSpiritAugmentClass } from './augments';
+import { ownerAugmentCapacity, isSpiritAugmentClass } from './augments';
 import {
 	buildLocationInteractions,
 	matchRewardCost,
-	relicOptions,
+	originRuneOptions,
 	type ResolvedRune,
 	type GainEffect
 } from './locationInteractions';
@@ -77,6 +77,7 @@ import { checkAwakenCondition, payAwakenCondition, needsManualAwaken } from './e
 import {
 	AWAKEN_HANDLERS,
 	AWAKEN_PROGRESS_KEYS,
+	AWAKEN_SPIRIT_IDS,
 	MANUAL_AWAKEN
 } from './effects/awakenHandlers';
 import {
@@ -612,15 +613,17 @@ function autoClaimReward(
  * Apply a player's pending Awakening-Phase (Benefits) reward claim and clear it.
  * Shared by the `resolveAwakenReward` command and the deadline/force-advance drain
  * (which calls it with default picks so an idle player still receives their grants
- * rather than forfeiting them). `taintedMaxBarrier` splits the Cursed-Spirit Tainted
- * line; `relicPicks` is a flat list consumed in order across every relicChoice grant.
+ * rather than forfeiting them). Each corruption-stage choice is applied from the
+ * split counts and basic-rune picks supplied by the claimant.
  */
 function applyAwakenRewardClaim(
 	state: PublicGameState,
 	seat: SeatColor,
 	player: PrivatePlayerState,
 	taintedMaxBarrier: number,
-	relicPicks: number[],
+	corruptMaxBarrier: number,
+	corruptRunePicks: number[],
+	fallenMaxBarrier: number,
 	catalog: PlayCatalog
 ): void {
 	const pending = player.pendingAwakenReward;
@@ -635,8 +638,8 @@ function applyAwakenRewardClaim(
 		traitCount: 0,
 		catalog
 	});
-	const relics = relicOptions();
-	let relicCursor = 0;
+	const runes = originRuneOptions();
+	let runeCursor = 0;
 	for (const grant of pending.grants) {
 		if (grant.kind === 'taintedChoice') {
 			// Cursed Spirit, Tainted: split the N units between max barrier and Enchanted.
@@ -645,17 +648,24 @@ function applyAwakenRewardClaim(
 			if (maxBarrier > 0) runAction(ctx, { kind: 'gainMaxBarrier', amount: maxBarrier });
 			if (enchanted > 0)
 				runAction(ctx, { kind: 'gainAttackDice', tier: 'enchanted', amount: enchanted });
-		} else if (grant.kind === 'relicChoice') {
-			// Cursed Spirit, Corrupt: grant the CHOSEN relic for each unit (not a generic
-			// one). Default to the first relic when no pick was supplied.
-			for (let i = 0; i < grant.amount; i += 1) {
-				const pick = relicPicks[relicCursor] ?? 0;
-				relicCursor += 1;
-				const relic = relics[Math.max(0, Math.min(relics.length - 1, pick))];
-				addGainedRune(player, relic);
-				player.relics += 1;
-				log.push(`Gained ${relic.name}.`);
+		} else if (grant.kind === 'corruptChoice') {
+			const maxBarrier = Math.max(0, Math.min(grant.amount, corruptMaxBarrier));
+			const runeCount = grant.amount - maxBarrier;
+			if (maxBarrier > 0) runAction(ctx, { kind: 'gainMaxBarrier', amount: maxBarrier });
+			for (let i = 0; i < runeCount; i += 1) {
+				const pick = corruptRunePicks[runeCursor] ?? 0;
+				runeCursor += 1;
+				const rune = runes[Math.max(0, Math.min(runes.length - 1, pick))];
+				if (rune) {
+					addGainedRune(player, rune);
+					log.push(`Gained ${rune.name}.`);
+				}
 			}
+		} else if (grant.kind === 'fallenChoice') {
+			const maxBarrier = Math.max(0, Math.min(grant.amount, fallenMaxBarrier));
+			const augments = grant.amount - maxBarrier;
+			if (maxBarrier > 0) runAction(ctx, { kind: 'gainMaxBarrier', amount: maxBarrier });
+			if (augments > 0) runAction(ctx, { kind: 'gainAugment', amount: augments });
 		} else if (grant.kind === 'augment') {
 			if (grant.amount > 0) runAction(ctx, { kind: 'gainAugment', amount: grant.amount });
 		} else if (grant.kind === 'attackDice') {
@@ -719,7 +729,7 @@ function drainPendingBeforeAdvance(state: PublicGameState, catalog: PlayCatalog)
 		for (const seat of state.activeSeats) {
 			const seatPlayer = state.players[seat];
 			if (!seatPlayer?.pendingAwakenReward) continue;
-			applyAwakenRewardClaim(state, seat, seatPlayer, 0, [], catalog);
+			applyAwakenRewardClaim(state, seat, seatPlayer, 0, 0, [], 0, catalog);
 		}
 		return;
 	}
@@ -730,7 +740,7 @@ function drainPendingBeforeAdvance(state: PublicGameState, catalog: PlayCatalog)
 		for (const seat of state.activeSeats) {
 			const seatPlayer = state.players[seat];
 			if (!seatPlayer) continue;
-			autoResolveCorruptionDiscard(state, seatPlayer);
+			autoResolveCorruptionDiscard(state, seat, seatPlayer, catalog);
 		}
 	}
 }
@@ -742,7 +752,12 @@ function drainPendingBeforeAdvance(state: PublicGameState, catalog: PlayCatalog)
  * clears the obligation. Used only by the deadline / host-force-advance drain. (Corruption
  * already restored the player's barrier instantly in takeDamage — there is no restore to apply here.)
  */
-function autoResolveCorruptionDiscard(state: PublicGameState, player: PrivatePlayerState): void {
+function autoResolveCorruptionDiscard(
+	state: PublicGameState,
+	seat: SeatColor,
+	player: PrivatePlayerState,
+	catalog?: PlayCatalog
+): void {
 	const obligation = player.pendingCorruptionDiscard;
 	if (!obligation) return;
 	if (obligation.count <= 0) {
@@ -768,6 +783,14 @@ function autoResolveCorruptionDiscard(state: PublicGameState, player: PrivatePla
 		});
 		shuffleBag(runtimeBag.contents, state.rng);
 		runtimeBag.count = runtimeBag.contents.length;
+		if (!victim.isFaceDown) {
+			const discardLog: string[] = [];
+			applyTrigger(state, seat, 'onSpiritDiscard', discardLog, {
+				catalog,
+				counts: victim.classes ?? {}
+			});
+			if (discardLog.length > 0) player.lastAction = { key: 'discard', label: 'Discard', log: discardLog };
+		}
 		owed -= 1;
 	}
 	state.bags.history = buildHistoryBags(state.bags);
@@ -1797,6 +1820,13 @@ function reduceCommand(
 			player.spiritAugmentAttachments = (player.spiritAugmentAttachments ?? []).filter(
 				(attachment) => attachment.spiritSlotIndex !== command.slotIndex
 			);
+			const discardLog: string[] = [];
+			if (!spirit.isFaceDown) {
+				applyTrigger(state, activePlayer.seatColor, 'onSpiritDiscard', discardLog, {
+					catalog,
+					counts: spirit.classes ?? {}
+				});
+			}
 
 			// Return the card to the bag it came from (face-down ⇒ Arcane Abyss,
 			// otherwise by cost) and reshuffle so it isn't predictably drawn next.
@@ -1824,6 +1854,9 @@ function reduceCommand(
 				// loss (1 VP each) instead of being forgiven, and the debt clears so the
 				// round can advance.
 				else settleUnpayableCorruptionDebt(player);
+			}
+			if (discardLog.length > 0) {
+				player.lastAction = { key: 'discard', label: `Discarded ${spirit.name}`, log: discardLog };
 			}
 			return success(state);
 		}
@@ -1865,7 +1898,7 @@ function reduceCommand(
 					`That Spirit Augment must go on ${augment.boundLabel ?? 'its designated spirit'}.`
 				);
 			}
-			// Host-class binding: some augments (e.g. Purifier's) may only be placed on a
+			// Host-class binding: a restricted augment may only be placed on a
 			// spirit that HAS a given class — restricting to a category of host, not one slot.
 			if (augment.hostClass != null && (spirit.classes?.[augment.hostClass] ?? 0) <= 0) {
 				return failure(
@@ -1889,10 +1922,9 @@ function reduceCommand(
 			}
 			const augmentClassId = catalog.classes.find((c) => c.name === augmentClassName)?.id;
 
-			// Capacity: a spirit holds ONE augment by default; some (e.g. Fairy Droid) raise
-			// it, and some augments carry their own host cap (Purifier grants 2 per Cursed
-			// Spirit). Count every placed augment (class-linked, or a legacy generic token).
-			const capacity = Math.max(augmentCapacityForSpirit(spirit), augment.hostCapacity ?? 0);
+			// Capacity: a spirit holds ONE augment by default; some abilities raise it, and
+			// some augments carry their own host cap. Count every placed augment.
+			const capacity = Math.max(ownerAugmentCapacity(player, spirit), augment.hostCapacity ?? 0);
 			const placedOnSpirit = (player.spiritAugmentAttachments ?? []).filter(
 				(a) =>
 					a.spiritSlotIndex === spirit.slotIndex &&
@@ -2023,6 +2055,16 @@ function reduceCommand(
 			if (!active.player.phaseReady) {
 				applyTrigger(state, active.seatColor, 'onLocationInteraction', [], { catalog });
 			}
+			if (
+				active.player.navigationDestination === 'Arcane Abyss' &&
+				!active.player.actionsUsedThisRound.includes('combat') &&
+				active.player.spirits.some(
+					(s) => s.id === AWAKEN_SPIRIT_IDS.shadowtaker && s.isFaceDown
+				)
+			) {
+				active.player.awakenProgress ??= {};
+				active.player.awakenProgress[AWAKEN_PROGRESS_KEYS.shadowtaker] = true;
+			}
 			active.player.phaseReady = true;
 			tryAdvanceFromLocation(state, catalog);
 			return success(state);
@@ -2106,7 +2148,9 @@ function reduceCommand(
 				active.seatColor,
 				active.player,
 				command.taintedMaxBarrier ?? 0,
-				command.relicPicks ?? [],
+				command.corruptMaxBarrier ?? 0,
+				command.corruptRunePicks ?? [],
+				command.fallenMaxBarrier ?? 0,
 				catalog
 			);
 			return success(state);
@@ -2578,91 +2622,24 @@ function reduceCommand(
 			let tradedRunes = 0;
 			let tradedRelics = 0;
 
-			// Pay the cost first (trade rows). Reject if the runes aren't there — UNLESS
-			// a cost waiver applies. Two classes make a trade free in the same way (the
-			// trade-cost step simply skips consuming the cost):
-			//   • Mod Injector — any Spirit-Augment trade is free while awakened.
-			//   • Undercover — the player's next rune→relic trade is free (one-shot flag).
+			// Pay the cost first for every trade row. Class abilities may change what is
+			// gained, but they do not waive the database-authored cost.
 			if (interaction.cost.length > 0) {
-				const counts = awakenedClassCounts(player);
-				// Resolve what this trade actually grants — honoring an "or" (chooseRune)
-				// gain's selected option — so the waiver matches the chosen item, not just
-				// a direct rune gain. (Cyber City's augment trade is an "or" of two augments.)
-				let grantsAugment = false;
-				let grantsRelic = false;
-				let waiverChoiceCursor = 0;
-				for (const g of interaction.gains) {
-					if (g.type === 'rune') {
-						if (g.rune.type === 'augment') grantsAugment = true;
-						if (g.rune.type === 'relic') grantsRelic = true;
-					} else if (g.type === 'chooseRune') {
-						const idx = command.choices?.[waiverChoiceCursor] ?? 0;
-						waiverChoiceCursor += 1;
-						const chosen = g.options[idx] ?? g.options[0];
-						if (chosen?.type === 'augment') grantsAugment = true;
-						if (chosen?.type === 'relic') grantsRelic = true;
+				const matched = matchRewardCost(interaction.cost, player.mats, command.costChoices);
+				if (!matched.ok) {
+					return failure('cannot_afford', 'You cannot pay the cost for that interaction.');
+				}
+				const paid: string[] = [];
+				for (const arrayIndex of matched.consumedArrayIndexes) {
+					const slot = player.mats[arrayIndex];
+					if (slot) {
+						slot.hasRune = false;
+						paid.push(slot.name ?? 'rune');
+						if (slot.type === 'relic') tradedRelics += 1;
+						else tradedRunes += 1;
 					}
 				}
-				const modInjectorFree = (counts['Mod Injector'] ?? 0) >= 1 && grantsAugment;
-				const undercoverFree = player.freeNextRelicTrade && grantsRelic;
-
-				if (modInjectorFree) {
-					log.push('Mod Injector — this Spirit Augment trade is free.');
-				} else if (undercoverFree) {
-					log.push('Undercover — this trade is free.');
-					player.freeNextRelicTrade = false; // one-shot
-					// "…then discard this spirit." The Undercover spirit(s) stayed on the
-					// board until the free trade was spent — discard them now (return to bag,
-					// drop attachments), mirroring the discardSpirit command.
-					const undercovers = player.spirits.filter(
-						(s) => !s.isFaceDown && (s.classes?.Undercover ?? 0) > 0
-					);
-					for (const u of undercovers) {
-						player.spirits = player.spirits.filter((s) => s.slotIndex !== u.slotIndex);
-						player.spiritAugmentAttachments = (player.spiritAugmentAttachments ?? []).filter(
-							(a) => a.spiritSlotIndex !== u.slotIndex
-						);
-						const sourceBag =
-							bagForSpiritCost(u.cost) ?? (u.isFaceDown ? ARCANE_ABYSS_BAG : SPIRIT_WORLD_BAG);
-						const bag = runtimeBagForSource(state, sourceBag);
-						bag.contents.push({
-							name: u.name,
-							guid: nextId(state.rng, 'discard'),
-							id: u.id,
-							cost: u.cost
-						});
-						shuffleBag(bag.contents, state.rng);
-						bag.count = bag.contents.length;
-						log.push(`${u.name} went undercover and was discarded.`);
-					}
-					if (undercovers.length > 0) {
-						state.bags.history = buildHistoryBags(state.bags);
-						const vpSettled = settleUnpayableCorruptionDebt(player);
-						if (vpSettled > 0)
-							log.push(
-								`No spirits left for the corruption sacrifice — lost ${vpSettled} VP instead.`
-							);
-					}
-				} else {
-					// `costChoices` lets the player pick WHICH held slot to discard for a
-					// wildcard cost; specific costs and missing picks fall back to auto-pick.
-					const matched = matchRewardCost(interaction.cost, player.mats, command.costChoices);
-					if (!matched.ok) {
-						return failure('cannot_afford', 'You cannot pay the cost for that interaction.');
-					}
-					const paid: string[] = [];
-					for (const arrayIndex of matched.consumedArrayIndexes) {
-						const slot = player.mats[arrayIndex];
-						if (slot) {
-							slot.hasRune = false;
-							paid.push(slot.name ?? 'rune');
-							// Classify what was given up so the trade hook can react (Rune Mage).
-							if (slot.type === 'relic') tradedRelics += 1;
-							else tradedRunes += 1;
-						}
-					}
-					if (paid.length) log.push(`Paid ${paid.join(', ')}.`);
-				}
+				if (paid.length) log.push(`Paid ${paid.join(', ')}.`);
 			}
 
 			// Apply the gains in order. "or" gains consume the next `choices` entry.
@@ -2671,6 +2648,8 @@ function reduceCommand(
 			// fires onRest once. Summons stay per-token (each draws separately, possibly
 			// queued).
 			let choiceCursor = 0;
+			const doublesAugments =
+				interaction.kind === 'trade' && (awakenedClassCounts(player)['Mod Injector'] ?? 0) >= 1;
 			let cultivateTokens = 0;
 			let restTokens = 0;
 			for (const gain of interaction.gains) {
@@ -2720,7 +2699,10 @@ function reduceCommand(
 					}
 					case 'rune': {
 						addGainedRune(player, gain.rune);
+						if (doublesAugments && gain.rune.type === 'augment') addGainedRune(player, gain.rune);
 						log.push(`Gained ${gain.rune.name}.`);
+						if (doublesAugments && gain.rune.type === 'augment')
+							log.push(`Mod Injector: gained a second ${gain.rune.name}.`);
 						break;
 					}
 					case 'chooseRune': {
@@ -2729,7 +2711,10 @@ function reduceCommand(
 						const chosen = gain.options[choiceIndex] ?? gain.options[0];
 						if (chosen) {
 							addGainedRune(player, chosen);
+							if (doublesAugments && chosen.type === 'augment') addGainedRune(player, chosen);
 							log.push(`Gained ${chosen.name}.`);
+							if (doublesAugments && chosen.type === 'augment')
+								log.push(`Mod Injector: gained a second ${chosen.name}.`);
 						}
 						break;
 					}
@@ -2978,19 +2963,20 @@ function resolveEncounterLocationIfReady(
 	state.combats.push(combat);
 
 	// Each Evil attacker scores 2 VP for engaging plus 2 VP per Good player
-	// corrupted in the exchange — see pvpVpForAttack. Also combat-event awaken progress:
-	// Hollow Eyes (Evil side dealt > 3 to a player). (Arcane Huntress is now a cultivate
-	// condition, armed in applyCultivate.)
-	const evilDamage = combat.sides
-		.filter((s) => s.side === 'evil')
-		.reduce((sum, s) => sum + s.damageDealt, 0);
+	// corrupted in the exchange — see pvpVpForAttack.
 	const corruptedGood = combat.sides.filter((s) => s.side === 'good' && s.corrupted).length;
 	for (const s of evilSeats) {
 		const p = state.players[s];
 		if (!p) continue;
 		p.victoryPoints += pvpVpForAttack(corruptedGood);
+	}
+	for (const side of combat.sides) {
+		if (!side.corrupted) continue;
+		const p = state.players[side.seat];
+		if (!p) continue;
 		p.awakenProgress ??= {};
-		if (evilDamage > 3) p.awakenProgress[AWAKEN_PROGRESS_KEYS.hollowEyes] = true;
+		p.awakenProgress[AWAKEN_PROGRESS_KEYS.cosmicGuardian] = true;
+		p.awakenProgress[AWAKEN_PROGRESS_KEYS.hollowEyes] = true;
 	}
 }
 

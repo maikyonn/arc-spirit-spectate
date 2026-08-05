@@ -395,14 +395,17 @@ export interface PendingCorruptionDiscard {
  * One claimable Awakening-Phase grant line, surfaced in the Cleanup phase. `amount`
  * is already scaled (e.g. ×N Cursed Spirits). Most kinds are fixed payouts;
  * `taintedChoice` (Cursed Spirit → Tainted) lets each unit be 1 Max Barrier OR 1
- * Enchanted Attack die, and `relicChoice` (Cursed Spirit → Corrupt) lets each unit
- * pick one of the five relics. `source` is the class name, shown on the claim card.
+ * Enchanted Attack die. Corrupt splits between Max Barrier and a chosen basic rune;
+ * Fallen splits between Max Barrier and a Spirit Augment.
  */
 export type AwakenGrant =
 	| { kind: 'vp'; amount: number; source: string; note?: string }
 	| { kind: 'attackDice'; tier: DiceTier; amount: number; source: string }
 	| { kind: 'augment'; amount: number; source: string }
 	| { kind: 'taintedChoice'; amount: number; source: string }
+	| { kind: 'corruptChoice'; amount: number; source: string }
+	| { kind: 'fallenChoice'; amount: number; source: string }
+	/** Legacy replay shape from before Corrupt became Max Barrier OR a basic Rune. */
 	| { kind: 'relicChoice'; amount: number; source: string };
 /**
  * Awakening-Phase rewards awaiting this player in the Cleanup phase (Cursed Spirit,
@@ -764,12 +767,11 @@ export interface PendingAugment {
 	boundSlotIndex?: number;
 	/** Human label for the bound target (the spirit's name), for the placement UI. */
 	boundLabel?: string;
-	/** When set, this augment may ONLY be placed on a spirit that HAS this class (e.g.
-	 *  Purifier's "place on each summoned Cursed Spirit" ⇒ hostClass = 'Cursed Spirit').
+	/** When set, this augment may ONLY be placed on a spirit that HAS this class.
 	 *  Unlike boundSlotIndex (one fixed spirit) this restricts to a CATEGORY of host. */
 	hostClass?: string;
 	/** Augment capacity to allow on the host for this augment, overriding the host's
-	 *  default 1-per-spirit cap (e.g. Purifier grants 2 per Cursed Spirit). */
+	 *  default 1-per-spirit cap. */
 	hostCapacity?: number;
 }
 
@@ -933,11 +935,7 @@ export interface PrivatePlayerState {
 	 * begins. Modeled as a flag honored by the summon UI + bots.
 	 */
 	redrawAvailable: boolean;
-	/**
-	 * The player's next rune→relic trade at a Spirit World location is free — the
-	 * trade-cost step waives the cost and clears this flag (Undercover, one-shot).
-	 * Honored in `resolveLocationInteraction`.
-	 */
+	/** Legacy replay field from the removed one-shot trade-cost waiver. */
 	freeNextRelicTrade: boolean;
 	/**
 	 * Status thresholds crossed this round, recorded by the `onStatusChange`
@@ -1175,7 +1173,15 @@ export type GameCommand =
 	 * Enchanted Attack dice (defaults to 0 ⇒ all Enchanted). Ignored when there is
 	 * no Tainted line.
 	 */
-	| { type: 'resolveAwakenReward'; taintedMaxBarrier?: number; relicPicks?: number[] }
+	| {
+			type: 'resolveAwakenReward';
+			taintedMaxBarrier?: number;
+			corruptMaxBarrier?: number;
+			corruptRunePicks?: number[];
+			fallenMaxBarrier?: number;
+			/** Legacy replay payload; ignored by current Cursed Spirit grants. */
+			relicPicks?: number[];
+	  }
 	| { type: 'forceAdvancePhase' }
 	| { type: 'dismissManualPrompt'; id: string }
 	/**

@@ -1,33 +1,48 @@
-import { runAction } from '../actions';
-import type { ClassAbility, ClassHandler } from './types';
+import { nextId } from '../../rng';
+import { relicOptions } from '../../locationInteractions';
+import type { PrivatePlayerState } from '../../types';
+import type { ClassAbility, ClassDecisions, ClassHandler } from './types';
 
-/**
- * "Gain 3 Initiative. Your next rune-to-relic trade is free, then discard this
- * spirit." A single-use awakening effect: when an Undercover spirit awakens it
- * gains 3 Initiative and arms a one-shot free rune→relic trade.
- *
- * The spirit is NOT discarded on awaken — it STAYS on the board until the free trade
- * is actually used ("…then discard this spirit"). The discard happens on the consuming
- * side: `runtime.resolveLocationInteraction` waives the cost of the next rune→relic
- * trade, clears the flag, AND discards the awakened Undercover spirit(s) at that point.
- * The UI (`LocationInteractionMenu.affordable`) treats such a trade as affordable so the
- * card stays clickable even without the runes.
- */
-const undercoverAwakening: ClassHandler = (ctx) => {
-	const slot = (ctx.command as { slotIndex?: number } | undefined)?.slotIndex;
-	if (slot == null) return;
-	const spirit = ctx.player.spirits.find(
-		(s) => s.slotIndex === slot && (s.classes?.Undercover ?? 0) > 0
-	);
-	if (!spirit) return;
+function gainFairyRelic(player: PrivatePlayerState): void {
+	const fairy = relicOptions().find((r) => r.name.startsWith('Fairy'));
+	if (!fairy) return;
+	player.mats.push({
+		slotIndex: player.mats.length + 1,
+		hasRune: true,
+		id: fairy.runeId,
+		name: fairy.name,
+		type: 'relic',
+		special: true
+	});
+	player.relics += 1;
+}
 
-	// +3 Initiative (deterministic, in-file).
-	runAction(ctx, { kind: 'gainInitiative', amount: 3 });
-
-	// Arm the one-shot free rune→relic trade — honored + cleared (and the spirit
-	// discarded) by the trade-cost step in runtime's resolveLocationInteraction.
-	ctx.player.freeNextRelicTrade = true;
-	ctx.log.push('Your next rune-to-relic trade is free — this spirit stays until you use it.');
+/** When encountering a player, optionally give both players one Fairy Relic. */
+const onPlayerInteraction: ClassHandler = (ctx) => {
+	if (!ctx.opponent) return;
+	ctx.player.pendingDecisions.push({
+		id: nextId(ctx.state.rng, 'dec'),
+		source: 'class',
+		kind: 'undercoverFairyRelics',
+		prompt: `Give ${ctx.opponent} and yourself 1 Fairy Relic?`,
+		options: [
+			{ id: `yes:${ctx.opponent}`, label: 'Give both players a Fairy Relic' },
+			{ id: 'no', label: 'No' }
+		]
+	});
+	ctx.log.push('Undercover: may give both players a Fairy Relic.');
 };
 
-export const ability: ClassAbility[] = [{ on: 'awakening', run: undercoverAwakening }];
+export const ability: ClassAbility[] = [{ on: 'onPlayerInteraction', run: onPlayerInteraction }];
+
+export const decisions: ClassDecisions = {
+	undercoverFairyRelics(ctx, optionId) {
+		if (!optionId.startsWith('yes:')) return;
+		const opponent = optionId.slice(4);
+		const other = ctx.state.players[opponent as keyof typeof ctx.state.players];
+		if (!other) return;
+		gainFairyRelic(ctx.player);
+		gainFairyRelic(other);
+		ctx.log.push(`Undercover: ${ctx.seat} and ${opponent} each gained a Fairy Relic.`);
+	}
+};

@@ -13,15 +13,11 @@
  *
  * Three text categories are scripted with shared helpers:
  *
- *   1. discard-N-of-X(-at-location) — {@link discardAtLocation}. Aquamaiden,
- *      Fairy Droid, Firewall, Blood Hound, Beefender, ENCODER, Lightcatcher,
- *      Lantern Fairy, Tidal Fairy, Floral Fairy, Rootguard.
- *   2. alignment + cultivate — Contessa, Cosmic Guardian, Shadowtaker. The
- *      cultivate-time condition is recorded on `player.awakenProgress` by
- *      `applyCultivate` (see {@link AWAKEN_PROGRESS_KEYS}); `check` reads it.
- *   3. combat / pvp event — Arcane Huntress (PvP while fallen), Hollow Eyes
- *      (deal >3 damage), Space Invader (discard 4 attack dice — the only one of
- *      the three with a payable cost rather than an event flag).
+ *   1. discard costs — Arcane Synthesizer, Astrobiologist, Meteor Shower and
+ *      Space Invader.
+ *   2. cultivate progress — Contessa, Arcane Huntress and the three location
+ *      Fairies. `applyCultivate` records the matching progress flags.
+ *   3. combat/navigation progress — Cosmic Guardian, Hollow Eyes and Shadowtaker.
  *
  * Every spirit listed here is "scripted"; a text spirit NOT keyed here falls to
  * the manual-confirm path ({@link MANUAL_AWAKEN}). Encoding reads ONLY the English
@@ -91,6 +87,7 @@ export const AWAKEN_SPIRIT_IDS = {
 	arcaneHuntress: 'cafb6cfb-11f8-476c-a275-a5b8179630d2',
 	arcaneSynthesizer: 'e75cb10c-fee4-488b-a213-e663c0fecae7',
 	astrobiologist: '67c591ab-4227-4656-8697-247243975076',
+	/** Archived; retained only as a stable id for old replays/tests. */
 	bloodHound: 'fc5835e9-156b-44fd-8037-832124df724c',
 	contessa: 'e4822f18-98f0-44fd-8711-756f946f6cd5',
 	cosmicGuardian: 'e9e12faa-0add-4fab-b251-a9dec5a8bae9',
@@ -111,16 +108,19 @@ export const AWAKEN_SPIRIT_IDS = {
 export const AWAKEN_PROGRESS_KEYS = {
 	/** Contessa: cultivated while Evil. */
 	contessa: 'awaken:contessa',
-	/** Cosmic Guardian: cultivated while Good with ≥1 Evil player in the game. */
+	/** Cosmic Guardian: became corrupted during combat. */
 	cosmicGuardian: 'awaken:cosmicGuardian',
-	/** Shadowtaker: cultivated with no other summoned spirit. */
+	/** Shadowtaker: visited the Arcane Abyss without fighting. */
 	shadowtaker: 'awaken:shadowtaker',
 	/** Arcane Huntress: cultivated while Fallen with ≥10 max barrier. */
 	arcaneHuntress: 'awaken:arcaneHuntress',
-	/** Meteor Shower: rested while holding ≥10 max barrier. */
+	/** Legacy key retained for replay compatibility; no longer written. */
 	meteorShower: 'awaken:meteorShower',
-	/** Hollow Eyes: dealt >3 damage to another player. */
-	hollowEyes: 'awaken:hollowEyes'
+	/** Hollow Eyes: failed combat and became corrupted in that combat. */
+	hollowEyes: 'awaken:hollowEyes',
+	floralFairy: 'awaken:floralFairy',
+	lanternFairy: 'awaken:lanternFairy',
+	tidalFairy: 'awaken:tidalFairy'
 } as const;
 
 // ── Shared discard helper ─────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ export interface DiscardAtLocationSpec {
 	count: number;
 	/** When set, the player must be navigating to this location to satisfy. */
 	locationName?: string;
-	/** For relics: only relics with ≤ this many barriers qualify (Blood Hound). */
+	/** Optional relic-barrier filter retained for replay-compatible custom content. */
 	maxBarrier?: number;
 	/**
 	 * "X or Y" conditions (Floral/Lantern/Tidal Fairy): a second alternative spec.
@@ -176,7 +176,7 @@ function optionsForBranch(
 		const isRelic = slot.type === 'relic';
 		if (wantRelic !== isRelic) continue;
 		if (spec.name && !(slot.name ?? '').toLowerCase().includes(spec.name.toLowerCase())) continue;
-		// `maxBarrier` (Blood Hound): relic barriers are not tracked on the held-rune
+		// Relic barriers are not tracked on the held-rune
 		// snapshot, so every held relic is treated as qualifying. The filter is kept
 		// in the spec for documentation + forward-compat if barrier metadata lands.
 		out.push({
@@ -444,6 +444,53 @@ const spaceInvaderHandler: AwakenHandler = {
 	}
 };
 
+/** Meteor Shower: discard two different named relics. */
+const discardUniqueRelics: AwakenHandler = {
+	check(ctx) {
+		const names = new Set(
+			ctx.player.mats
+				.filter((m) => m.hasRune && m.type === 'relic')
+				.map((m) => m.id ?? m.name)
+				.filter(Boolean)
+		);
+		return names.size >= 2 ? { ok: true } : { ok: false, reason: 'need_2_unique_relics' };
+	},
+	discardChoice(ctx) {
+		const options = ctx.player.mats
+			.filter((m) => m.hasRune && m.type === 'relic')
+			.map((m) => ({
+				ref: { kind: 'rune' as const, slotIndex: m.slotIndex },
+				label: m.name ?? 'Relic',
+				runeId: m.id
+			}));
+		return new Set(options.map((o) => o.runeId ?? o.label)).size >= 2
+			? { count: 2, options, requiresSelection: true }
+			: null;
+	},
+	pay(ctx) {
+		const candidates = ctx.player.mats.filter((m) => m.hasRune && m.type === 'relic');
+		const selected = selectionFrom(ctx)?.filter(
+			(ref): ref is Extract<AwakenDiscardRef, { kind: 'rune' }> => ref.kind === 'rune'
+		);
+		let refs: AwakenDiscardRef[] = [];
+		if (selected?.length === 2) {
+			const picked = selected.map((ref) => candidates.find((m) => m.slotIndex === ref.slotIndex));
+			if (picked.every(Boolean) && new Set(picked.map((m) => m?.id ?? m?.name)).size === 2) refs = selected;
+		}
+		if (refs.length === 0) {
+			const seen = new Set<string>();
+			for (const mat of candidates) {
+				const key = mat.id ?? mat.name ?? String(mat.slotIndex);
+				if (seen.has(key)) continue;
+				seen.add(key);
+				refs.push({ kind: 'rune', slotIndex: mat.slotIndex });
+				if (seen.size >= 2) break;
+			}
+		}
+		discardRefs(ctx.player, refs, ctx.log);
+	}
+};
+
 /**
  * "Discard 2 Arcane Abyss Spirits" (Arcane Synthesizer, Astrobiologist). Candidates
  * are the player's OTHER Arcane Abyss spirits — cost 7–9, the abyss-bag range (see
@@ -502,52 +549,27 @@ const KEYS = AWAKEN_PROGRESS_KEYS;
  */
 export const AWAKEN_HANDLERS: Record<string, AwakenHandler> = {
 	// ── Category 1: discard-N-of-X ────────────────────────────────────────────
-	// "Discard 1 relic with 2 or less barriers." (barrier filter not enforced —
-	// relic barriers aren't on the held snapshot; any held relic qualifies.)
-	[IDS.bloodHound]: discardAtLocation({ what: 'relic', count: 1, maxBarrier: 2 }),
-	// "Discard a Fairy or Flower Relic" — both are RELICS; no location gate.
-	[IDS.floralFairy]: discardAtLocation({
-		what: 'relic',
-		name: 'Fairy',
-		count: 1,
-		or: { what: 'relic', name: 'Flower', count: 1 }
-	}),
-	// "Discard a Fairy or Firecracker Relic" — both RELICS.
-	[IDS.lanternFairy]: discardAtLocation({
-		what: 'relic',
-		name: 'Fairy',
-		count: 1,
-		or: { what: 'relic', name: 'Firecracker', count: 1 }
-	}),
-	// "Discard a Fairy or Teapot Relic" — both RELICS.
-	[IDS.tidalFairy]: discardAtLocation({
-		what: 'relic',
-		name: 'Fairy',
-		count: 1,
-		or: { what: 'relic', name: 'Teapot', count: 1 }
-	}),
 	// "Discard 2 Arcane Abyss Spirits." (cost 7–9 spirits, excluding self)
 	[IDS.arcaneSynthesizer]: discardAbyssSpirits(2),
 	[IDS.astrobiologist]: discardAbyssSpirits(2),
 
-	// ── Category 2: cultivate / rest event (progress flag set when the action fires) ──
+	// ── Category 2: event progress flags ──────────────────────────────────────
 	// "Cultivate while Evil."
 	[IDS.contessa]: progressFlagHandler(KEYS.contessa, 'cultivate_while_evil_required'),
-	// "If there is at least 1 Evil player, Cultivate while Good."
-	[IDS.cosmicGuardian]: progressFlagHandler(KEYS.cosmicGuardian, 'cultivate_while_good_required'),
-	// "Cultivate with no summoned spirits other than this spirit."
-	[IDS.shadowtaker]: progressFlagHandler(KEYS.shadowtaker, 'cultivate_alone_required'),
+	[IDS.cosmicGuardian]: progressFlagHandler(KEYS.cosmicGuardian, 'combat_corruption_required'),
+	[IDS.shadowtaker]: progressFlagHandler(KEYS.shadowtaker, 'abyss_without_combat_required'),
 	// "Cultivate with 10 max barrier, with status Fallen."
 	[IDS.arcaneHuntress]: progressFlagHandler(
 		KEYS.arcaneHuntress,
 		'cultivate_fallen_10_max_barrier_required'
 	),
-	// "Rest with 10 Max Barrier."
-	[IDS.meteorShower]: progressFlagHandler(KEYS.meteorShower, 'rest_10_max_barrier_required'),
+	[IDS.floralFairy]: progressFlagHandler(KEYS.floralFairy, 'cultivate_4_unique_forest_required'),
+	[IDS.lanternFairy]: progressFlagHandler(KEYS.lanternFairy, 'cultivate_4_unique_lantern_required'),
+	[IDS.tidalFairy]: progressFlagHandler(KEYS.tidalFairy, 'cultivate_4_unique_tidal_required'),
+	[IDS.meteorShower]: discardUniqueRelics,
 
 	// ── Category 3: combat / pvp event ────────────────────────────────────────
-	// "Deal more than 3 damage to another player."
-	[IDS.hollowEyes]: progressFlagHandler(KEYS.hollowEyes, 'deal_4_damage_required'),
+	[IDS.hollowEyes]: progressFlagHandler(KEYS.hollowEyes, 'failed_combat_corruption_required'),
 	// "Discard 4 of any attack dice." (payable cost, not an event flag)
 	[IDS.spaceInvader]: spaceInvaderHandler
 };
@@ -576,10 +598,9 @@ export function hasAwakenHandler(spiritId: string): boolean {
  */
 export function recordCultivateAwakenProgress(
 	player: PrivatePlayerState,
-	allPlayers: PrivatePlayerState[]
+	_allPlayers: PrivatePlayerState[]
 ): void {
 	player.awakenProgress ??= {};
-	const evilCount = allPlayers.filter((p) => isEvilAlignment(p.statusLevel)).length;
 	const selfEvil = isEvilAlignment(player.statusLevel);
 	const selfFallen = player.statusLevel >= STATUS_LADDER.length - 1;
 
@@ -589,31 +610,16 @@ export function recordCultivateAwakenProgress(
 	if (holds(IDS.contessa) && selfEvil) {
 		player.awakenProgress[KEYS.contessa] = true;
 	}
-	// Cosmic Guardian: "at least 1 Evil player, Cultivate while Good".
-	if (holds(IDS.cosmicGuardian) && !selfEvil && evilCount >= 1) {
-		player.awakenProgress[KEYS.cosmicGuardian] = true;
-	}
-	// Shadowtaker: "Cultivate with no summoned spirits other than this spirit."
-	// i.e. the only spirit in the tableau is Shadowtaker itself.
-	if (holds(IDS.shadowtaker) && player.spirits.length === 1) {
-		player.awakenProgress[KEYS.shadowtaker] = true;
-	}
 	// Arcane Huntress: "Cultivate with 10 max barrier, with status Fallen."
 	if (holds(IDS.arcaneHuntress) && selfFallen && player.maxBarrier >= 10) {
 		player.awakenProgress[KEYS.arcaneHuntress] = true;
 	}
-}
-
-/**
- * Record rest-time awakening progress. Mirrors {@link recordCultivateAwakenProgress}
- * for the Rest action: Meteor Shower awakens by "Rest with 10 Max Barrier." Called from
- * the runtime when a player resolves a Rest. Only sets the flag when the player holds
- * the relevant face-down spirit, so it never grants progress they can't use.
- */
-export function recordRestAwakenProgress(player: PrivatePlayerState): void {
-	player.awakenProgress ??= {};
-	const holds = (spiritId: string) => player.spirits.some((s) => s.id === spiritId && s.isFaceDown);
-	if (holds(IDS.meteorShower) && player.maxBarrier >= 10) {
-		player.awakenProgress[KEYS.meteorShower] = true;
-	}
+	const uniqueAt = (origin: string) =>
+		new Set(player.spirits.filter((s) => (s.origins?.[origin] ?? 0) > 0).map((s) => s.id ?? s.name)).size;
+	if (holds(IDS.floralFairy) && uniqueAt('Floral Patch') >= 4)
+		player.awakenProgress[KEYS.floralFairy] = true;
+	if (holds(IDS.lanternFairy) && uniqueAt('Lantern Lights') >= 4)
+		player.awakenProgress[KEYS.lanternFairy] = true;
+	if (holds(IDS.tidalFairy) && uniqueAt('Moon Tide') >= 4)
+		player.awakenProgress[KEYS.tidalFairy] = true;
 }

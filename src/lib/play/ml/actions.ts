@@ -34,8 +34,7 @@ import { canApply } from '../legality';
 import {
 	buildLocationInteractions,
 	eligibleCostSlots,
-	isWildcardCost,
-	relicOptions
+	isWildcardCost
 } from '../locationInteractions';
 import { buildMonsterRewards, rewardClaimCount, type MonsterRewardOption } from '../monsterRewards';
 import {
@@ -80,29 +79,6 @@ function combinations<T>(
 			visit(i + 1);
 			chosen.pop();
 			if (out.length >= limit) return;
-		}
-	};
-	visit(0);
-	return out;
-}
-
-/** Multiset choices (combinations with repetition), used for N independently chosen relic grants.
- * Order is irrelevant to the reducer, so this emits C(N+K-1,K-1), not K^N duplicates. */
-function multisetPicks(optionCount: number, count: number): number[][] {
-	if (count <= 0) return [[]];
-	const out: number[][] = [];
-	const chosen: number[] = [];
-	const visit = (minimum: number): void => {
-		if (out.length >= MAX_ENGINE_CHOICE_COMMANDS) return;
-		if (chosen.length === count) {
-			out.push([...chosen]);
-			return;
-		}
-		for (let pick = minimum; pick < optionCount; pick += 1) {
-			chosen.push(pick);
-			visit(pick);
-			chosen.pop();
-			if (out.length >= MAX_ENGINE_CHOICE_COMMANDS) return;
 		}
 	};
 	visit(0);
@@ -671,23 +647,29 @@ export function enumerateCandidates(
 				const tainted = grants.find((g) => g.kind === 'taintedChoice') as
 					| { amount: number }
 					| undefined;
-				const relicCount = grants
-					.filter(
-						(grant): grant is Extract<(typeof grants)[number], { kind: 'relicChoice' }> =>
-							grant.kind === 'relicChoice'
-					)
-					.reduce((sum, grant) => sum + grant.amount, 0);
+				const corrupt = grants.find((g) => g.kind === 'corruptChoice') as { amount: number } | undefined;
+				const fallen = grants.find((g) => g.kind === 'fallenChoice') as { amount: number } | undefined;
 				const taintedChoices: Array<number | undefined> = tainted
 					? Array.from({ length: tainted.amount + 1 }, (_, amount) => amount)
 					: [undefined];
-				const relicPicks = multisetPicks(relicOptions().length, relicCount);
+				const corruptChoices = corrupt
+					? Array.from({ length: corrupt.amount + 1 }, (_, amount) => amount)
+					: [undefined];
+				const fallenChoices = fallen
+					? Array.from({ length: fallen.amount + 1 }, (_, amount) => amount)
+					: [undefined];
 				for (const taintedMaxBarrier of taintedChoices) {
-					for (const picks of relicPicks) {
-						tryAdd({
-							type: 'resolveAwakenReward',
-							...(taintedMaxBarrier === undefined ? {} : { taintedMaxBarrier }),
-							...(picks.length === 0 ? {} : { relicPicks: picks })
-						});
+					for (const corruptMaxBarrier of corruptChoices) {
+						for (const fallenMaxBarrier of fallenChoices) {
+							const runeCount = corrupt ? corrupt.amount - (corruptMaxBarrier ?? 0) : 0;
+							tryAdd({
+								type: 'resolveAwakenReward',
+								...(taintedMaxBarrier === undefined ? {} : { taintedMaxBarrier }),
+								...(corruptMaxBarrier === undefined ? {} : { corruptMaxBarrier }),
+								...(runeCount > 0 ? { corruptRunePicks: Array(runeCount).fill(0) } : {}),
+								...(fallenMaxBarrier === undefined ? {} : { fallenMaxBarrier })
+							});
+						}
 					}
 				}
 			}
@@ -937,7 +919,11 @@ export function commandMatches(a: GameCommand, b: GameCommand): boolean {
 			const other = b as typeof a;
 			if (other.taintedMaxBarrier !== undefined && a.taintedMaxBarrier !== other.taintedMaxBarrier)
 				return false;
-			return !other.relicPicks?.length || sameNumbers(a.relicPicks, other.relicPicks);
+			if (other.corruptMaxBarrier !== undefined && a.corruptMaxBarrier !== other.corruptMaxBarrier)
+				return false;
+			if (other.fallenMaxBarrier !== undefined && a.fallenMaxBarrier !== other.fallenMaxBarrier)
+				return false;
+			return !other.corruptRunePicks?.length || sameNumbers(a.corruptRunePicks, other.corruptRunePicks);
 		}
 		default:
 			return true; // type-only commands: passEncounter, initiatePvp, commit*, refillMarket, etc.

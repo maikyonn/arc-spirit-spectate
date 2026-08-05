@@ -73,7 +73,7 @@ const FULL_CLASS_FEATURES = [
 	'Infiltrator',
 	'Ironmane',
 	'Mod Injector',
-	'Purifier',
+	'Tree of Growth',
 	'Rune Mage',
 	'Sharpshooter',
 	'Soul Weaver',
@@ -211,7 +211,7 @@ function spiritRouteFeatures(classes: Record<string, number> | undefined): numbe
 		clamp01(sumClasses(classes, ['World Ender', 'Golden Ruler', 'World Guardian', 'Healer']) / 3),
 		clamp01(sumClasses(classes, ['Cursed Spirit', 'The Corruptor', 'Dark Assassin']) / 3),
 		clamp01(sumClasses(classes, ['Soul Weaver', 'Sharpshooter', 'Ironmane']) / 3),
-		clamp01(sumClasses(classes, ['Abyss Summoner', 'Purifier', 'Strategist', 'Rune Mage']) / 3)
+		clamp01(sumClasses(classes, ['Abyss Summoner', 'Tree of Growth', 'Strategist', 'Rune Mage']) / 3)
 	];
 }
 
@@ -754,7 +754,7 @@ function actionEntityIds(
 			];
 		case 'resolveAwakenReward':
 			return [
-				(cmd.relicPicks ?? [])
+				(cmd.corruptRunePicks ?? [])
 					.slice()
 					.sort((a, b) => a - b)
 					.join('|'),
@@ -1076,7 +1076,7 @@ export function encodeAction(
 			f[p] = clamp01((cmd.taintedMaxBarrier ?? 0) / 10);
 			f[p + 1] = clamp01(tainted / 10);
 			const relicCounts = [0, 0, 0, 0, 0];
-			for (const pick of cmd.relicPicks ?? []) {
+			for (const pick of cmd.corruptRunePicks ?? []) {
 				if (pick >= 0 && pick < relicCounts.length) relicCounts[pick] += 1;
 			}
 			for (let i = 0; i < relicCounts.length; i += 1) f[p + 2 + i] = clamp01(relicCounts[i] / 7);
@@ -1095,8 +1095,8 @@ export function encodeAction(
 					.filter((grant) => grant.kind === 'augment')
 					.reduce((sum, grant) => sum + grant.amount, 0) / 7
 			);
-			f[p + 10] = clamp01((cmd.relicPicks?.length ?? 0) / 7);
-			f[p + 11] = clamp01(new Set(cmd.relicPicks ?? []).size / 5);
+			f[p + 10] = clamp01((cmd.corruptRunePicks?.length ?? 0) / 7);
+			f[p + 11] = clamp01(new Set(cmd.corruptRunePicks ?? []).size / 4);
 			break;
 		}
 		case 'discardRune': {

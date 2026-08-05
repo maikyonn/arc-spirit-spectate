@@ -59,18 +59,18 @@ describe('Cursed Spirit — engine-handled Cleanup claim', () => {
 		]);
 	});
 
-	it('Corrupt → a relicChoice claim line scaled ×N', () => {
+	it('Corrupt → a max-barrier-or-rune claim line scaled ×N', () => {
 		const { player, state } = stateForCursed(3, { corrupt: true });
 		enterBenefits(state);
 		expect(grants(player)).toEqual([
-			{ kind: 'relicChoice', amount: 3, source: 'Cursed Spirit' }
+			{ kind: 'corruptChoice', amount: 3, source: 'Cursed Spirit' }
 		]);
 	});
 
-	it('Fallen → an augment claim line scaled ×N', () => {
+	it('Fallen → a max-barrier-or-augment claim line scaled ×N', () => {
 		const { player, state } = stateForCursed(2, { fallen: true });
 		enterBenefits(state);
-		expect(grants(player)).toEqual([{ kind: 'augment', amount: 2, source: 'Cursed Spirit' }]);
+		expect(grants(player)).toEqual([{ kind: 'fallenChoice', amount: 2, source: 'Cursed Spirit' }]);
 	});
 
 	it('crossing every stage in one round builds one claim line per stage, all ×N', () => {
@@ -78,8 +78,8 @@ describe('Cursed Spirit — engine-handled Cleanup claim', () => {
 		enterBenefits(state);
 		expect(grants(player)).toEqual([
 			{ kind: 'taintedChoice', amount: 1, source: 'Cursed Spirit' },
-			{ kind: 'relicChoice', amount: 1, source: 'Cursed Spirit' },
-			{ kind: 'augment', amount: 1, source: 'Cursed Spirit' }
+			{ kind: 'corruptChoice', amount: 1, source: 'Cursed Spirit' },
+			{ kind: 'fallenChoice', amount: 1, source: 'Cursed Spirit' }
 		]);
 	});
 

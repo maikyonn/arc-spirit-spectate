@@ -351,8 +351,8 @@ const attackDie = (id: string, tier: PrivatePlayerState['attackDice'][number]['t
 	tier
 });
 
-describe('Soul Weaver (onRest)', () => {
-	it('sets stun immunity at 2 traits without restoring health', () => {
+describe('Soul Weaver (engine-handled breakpoints)', () => {
+	it('does not use the old onRest stun-immunity effect at 2 traits', () => {
 		const p = makePlayer({
 			barrier: 2,
 			maxBarrier: 4,
@@ -360,11 +360,11 @@ describe('Soul Weaver (onRest)', () => {
 			spirits: [spirit(1, 'A', { 'Soul Weaver': 2 }, {})]
 		});
 		applyTrigger(makeState(p), 'Red', 'onRest', []);
-		expect(p.stunImmune).toBe(true);
-		expect(p.barrier).toBe(2); // the restore breakpoint (3) is not reached
+		expect(p.stunImmune).toBe(false);
+		expect(p.barrier).toBe(2);
 	});
 
-	it('at 3 traits sets stun immunity AND restores 2 health', () => {
+	it('does not use the old onRest restore effect at 3 traits', () => {
 		const p = makePlayer({
 			barrier: 1,
 			maxBarrier: 4,
@@ -372,14 +372,13 @@ describe('Soul Weaver (onRest)', () => {
 			spirits: [spirit(1, 'A', { 'Soul Weaver': 3 }, {})]
 		});
 		applyTrigger(makeState(p), 'Red', 'onRest', []);
-		expect(p.stunImmune).toBe(true);
-		expect(p.barrier).toBe(3); // +2 health
-		expect(p.brokenBarrier).toBe(1);
+		expect(p.stunImmune).toBe(false);
+		expect(p.barrier).toBe(1);
+		expect(p.brokenBarrier).toBe(3);
 	});
 });
 
-// Purifier is now an opt-in awakening decision that places augments on the player's
-// Cursed Spirits (no manual prompt) — covered in classes/purifier.test.ts.
+// Soul Weaver's active rules are covered at their engine integration points.
 
 describe('Strategist (onRest)', () => {
 	it('enqueues ONE decision card (no immediate discard) when it has ≥3 dice', () => {

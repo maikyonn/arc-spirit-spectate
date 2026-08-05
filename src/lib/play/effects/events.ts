@@ -23,6 +23,8 @@ export type GameEvent =
 	 * PLANNED SPLIT: carry `{ world: 'spiritWorld' | 'abyss' }` so the redraw scopes.
 	 */
 	| 'onSpiritSummon'
+	/** A spirit leaves the player's tableau (Healer, Captain, Sharpshooter). */
+	| 'onSpiritDiscard'
 	/** The Cultivate action (Cultivator, Arc Mage, Captain). */
 	| 'onCultivate'
 	/** The Rest action (Fighter, Elementalist, Healer, Soul Weaver, Strategist, Arcane Advisor). */
@@ -40,7 +42,7 @@ export type GameEvent =
 	/** A combat killed its target (Adaptive Fighter). */
 	| 'onMonsterKill'
 	// ── Awakening & Cleanup Phase ─────────────────────────────────────────────
-	/** A single spirit awakens (Fairy, Dragon Warrior, Firekeeper, Fairy Droid, Purifier). */
+	/** A single spirit awakens (Fairy, Dragon Warrior, Firekeeper, Fairy Droid). */
 	| 'awakening'
 	/** A player's corruption status changed (carries old/new); sets the round's threshold flags. */
 	| 'onStatusChange'
@@ -60,6 +62,7 @@ export const EVENT_TIMELINE: readonly GameEvent[] = [
 	'onNavigate',
 	'onPlayerInteraction',
 	'onSpiritSummon',
+	'onSpiritDiscard',
 	'onCultivate',
 	'onRest',
 	'onLocationInteraction',

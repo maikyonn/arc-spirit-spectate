@@ -67,6 +67,24 @@ export function augmentCapacityForSpirit(spirit: Pick<PlaySpirit, 'classes'>): n
 	return 1;
 }
 
+/** Soul Weaver IV raises every owned spirit's capacity from one augment to two. */
+export function ownerAugmentCapacity(
+	player: PrivatePlayerState,
+	spirit: Pick<PlaySpirit, 'classes'>
+): number {
+	const base = augmentCapacityForSpirit(spirit);
+	if (base === UNLIMITED_AUGMENT_CAPACITY) return base;
+	let soulWeavers = 0;
+	for (const owned of player.spirits ?? []) {
+		if (!owned.isFaceDown) soulWeavers += owned.classes?.['Soul Weaver'] ?? 0;
+	}
+	for (const attachment of player.spiritAugmentAttachments ?? []) {
+		const host = player.spirits.find((s) => s.slotIndex === attachment.spiritSlotIndex);
+		if (!host?.isFaceDown && attachment.className === 'Soul Weaver') soulWeavers += 1;
+	}
+	return soulWeavers >= 4 ? Math.max(base, 2) : base;
+}
+
 /**
  * Count of augments ALREADY placed on the spirit in `slotIndex`, using the exact
  * predicate the reducer's capacity gate uses (`placeAugmentOnSpirit`): a class-linked
@@ -113,7 +131,7 @@ export function augmentPlacementEligibility(
 			slotReasons[slot] = `Needs ${augment.hostClass}`;
 			continue;
 		}
-		const capacity = Math.max(augmentCapacityForSpirit(spirit), augment.hostCapacity ?? 0);
+		const capacity = Math.max(ownerAugmentCapacity(player, spirit), augment.hostCapacity ?? 0);
 		if (placedAugmentCount(player, slot) >= capacity) {
 			slotReasons[slot] = 'Augment slots full';
 			continue;

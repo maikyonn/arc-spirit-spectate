@@ -77,7 +77,6 @@ const SEEDS: readonly SpiritSeed[] = [
 		['Astral Zone']
 	],
 	['18154c10-1422-4655-a7cd-c637ac947916', 'Beefender', 7, ['Strategist'], ['Floral Patch']],
-	['fc5835e9-156b-44fd-8037-832124df724c', 'Blood Hound', 7, ['Blood Hunter'], ['Void']],
 	['728c5151-2da6-4202-b5b0-aae13dec68be', 'Child Prodigy', 7, ['Child Prodigy'], ['Royal Family']],
 	['ed612933-fd19-4b68-993e-6e61b52eb4ce', 'Comet Caller', 7, ['Rune Mage'], ['Astral Zone']],
 	['40016186-6b98-4dbb-8364-b50d27e9f394', 'ENCODER', 7, ['Infiltrator'], ['Cyber City']],
@@ -85,12 +84,11 @@ const SEEDS: readonly SpiritSeed[] = [
 		'5c864c2d-20bd-4134-a829-09a2cc793e41',
 		'Fairy Droid',
 		7,
-		['Fairy Droid', 'Fairy'],
+		['Fairy Droid'],
 		['Cyber City']
 	],
 	['0a775e09-555f-43a7-ac5b-06aaeaa4b69c', 'Firewall', 7, ['Disruptor'], ['Cyber City']],
 	['ae827012-29ff-406e-bcbe-afe3a5258607', 'Floral Fairy', 7, ['Fairy'], ['Floral Patch']],
-	['487e38c3-0c11-4879-a5f2-4370dec9a680', 'Golden Retriever', 7, ['Undercover'], ['Royal Family']],
 	[
 		'70ed3fcd-a7c2-4443-b5e7-9b6de8491917',
 		'Hollow Eyes',
@@ -108,7 +106,7 @@ const SEEDS: readonly SpiritSeed[] = [
 	],
 	['5dc44c85-8224-4c49-89ff-90a37aa10040', 'Meteor Shower', 7, ['Ancient Magus'], ['Astral Zone']],
 	['b8314d8f-ea32-44de-a3ad-62944e5ccecb', 'Mod Injector', 7, ['Mod Injector'], ['Cyber City']],
-	['3b196b06-a047-4505-aad6-bf0c9fe05ac0', 'Rootguard', 7, ['Purifier'], ['Floral Patch']],
+	['3b196b06-a047-4505-aad6-bf0c9fe05ac0', 'Rootguard', 7, ['Tree of Growth'], ['Floral Patch']],
 	['b3068fcf-d197-4030-ba55-29ac1621f9a9', 'Space Invader', 7, ['Dark Fighter'], ['Void']],
 	[
 		'e24e9f91-7333-44c0-968e-15b900af3385',
@@ -118,7 +116,6 @@ const SEEDS: readonly SpiritSeed[] = [
 		['Astral Zone']
 	],
 	['36bb656c-49fe-4d50-a037-b29dbd1bfa91', 'Tidal Fairy', 7, ['Fairy'], ['Moon Tide']],
-	['2d7981eb-440d-45ec-b058-d495e703c71e', 'Undercover Maid', 7, ['Undercover'], ['Royal Family']],
 	['d89f5d3a-5519-4b96-baf0-1f0a49c0ada1', 'Wish Maker', 7, ['Firekeeper'], ['Lantern Lights']],
 	[
 		'cafb6cfb-11f8-476c-a275-a5b8179630d2',

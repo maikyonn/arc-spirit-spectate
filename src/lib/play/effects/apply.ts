@@ -15,7 +15,7 @@ import { buildEffectContext, type EffectCombatInfo, type TradePayload } from './
 import { colocatedPlayers } from './colocated';
 import { runAction } from './actions';
 import { runClassHandler } from './handlers';
-import { recordCultivateAwakenProgress, recordRestAwakenProgress } from './awakenHandlers';
+import { recordCultivateAwakenProgress } from './awakenHandlers';
 import { augmentContributions } from '../augments';
 import { originRuneForName } from '../locationInteractions';
 
@@ -153,7 +153,7 @@ export function applyTrigger(
 
 /**
  * Rest intrinsically restores two current barrier, then fires every `onRest`
- * class ability and records Rest-based awakening progress. The location row
+ * class ability. The location row
  * therefore needs only the Rest action icon; restoration is part of the action,
  * not a separate reward-icon gain.
  */
@@ -173,7 +173,6 @@ export function applyRest(
 	if (restored > 0) log.push(`Restored ${restored} barrier.`);
 
 	applyTrigger(state, seat, 'onRest', log, opts);
-	recordRestAwakenProgress(player);
 	log.push('Rested.');
 }
 
@@ -196,10 +195,8 @@ export function applyCultivate(
 	const player = state.players[seat];
 	if (!player) return;
 
-	// P6 text-awaken progress: Contessa / Cosmic Guardian / Shadowtaker awaken by
-	// cultivating under a specific alignment / global-alignment / lone-spirit
-	// condition. Record the flag now (the cultivate moment) so the awaken gate can
-	// later read it. Uses the GLOBAL alignment tally across all active seats.
+	// Record cultivate-time progress for Contessa, Arcane Huntress and the three
+	// unique-origin Fairies before resolving the intrinsic yield.
 	const allPlayers = (state.activeSeats ?? [])
 		.map((s) => state.players[s])
 		.filter((p): p is NonNullable<typeof p> => !!p);

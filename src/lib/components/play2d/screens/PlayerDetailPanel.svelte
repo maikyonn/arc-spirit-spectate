@@ -235,7 +235,7 @@
 				<div class="pace-stat">
 					<div class="ps-lab">Resources</div>
 					<div class="ps-row"><span class="ps-num"><span class="pos">+{barrierTotals?.gained ?? 0}</span> / <span class="neg">−{barrierTotals?.lost ?? 0}</span></span><span class="ps-tag">barrier</span></div>
-					<div class="ps-row"><span class="ps-num"><span class="pos">+{bloodTotals?.gained ?? 0}</span> / <span class="neg">−{bloodTotals?.spent ?? 0}</span></span><span class="ps-tag">blood</span></div>
+					<div class="ps-row"><span class="ps-num"><span class="pos">+{bloodTotals?.gained ?? 0}</span> / <span class="neg">−{bloodTotals?.spent ?? 0}</span></span><span class="ps-tag">broken barrier</span></div>
 				</div>
 			</div>
 		</section>

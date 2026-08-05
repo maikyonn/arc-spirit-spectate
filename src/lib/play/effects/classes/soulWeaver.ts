@@ -7,15 +7,8 @@ import type { ClassAbility } from './types';
 //       button shows BEFORE the first pick, and is cleared once the player picks a
 //       spirit (runtime spawnHandSpirit). It is NOT re-armed per-summon — hence no
 //       onSpiritSummon breakpoint here.
-//   (2) At >=2, your side may always attack at the same time as the enemy
-//       (setStunImmune backs the count-based rule in combat.ts).
-//   (3) At >=3, on Rest restore 2 barrier.
-export const ability: ClassAbility[] = [
-	{
-		on: 'onRest',
-		breakpoints: [
-			{ count: 2, actions: [{ kind: 'setStunImmune' }] },
-			{ count: 3, actions: [{ kind: 'setStunImmune' }, { kind: 'restoreBarrier', amount: 2 }] }
-		]
-	}
-];
+//   (2) At >=2, after corruption fully restores barrier, gain 2 max barrier.
+//       This is handled beside corruption's full-restore step in combat.ts.
+//   (3) At >=3, your side may attack simultaneously (combat.ts).
+//   (4) At >=4, your spirits can hold a second augment (augments.ts).
+export const ability: ClassAbility[] = [];

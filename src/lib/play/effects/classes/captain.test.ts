@@ -77,10 +77,11 @@ describe('Captain (onCultivate → +1 Spirit Augment with 3 Heroes)', () => {
 		expect(player.unplacedAugments?.length ?? 0).toBe(0);
 	});
 
-	it('exposes a single onCultivate handler ability (no breakpoints)', () => {
-		expect(ability).toHaveLength(1);
+	it('exposes cultivate and discard abilities', () => {
+		expect(ability).toHaveLength(2);
 		expect(ability[0].on).toBe('onCultivate');
 		expect(typeof ability[0].run).toBe('function');
+		expect(ability[1]).toMatchObject({ on: 'onSpiritDiscard' });
 	});
 
 	it('direct handler unit test: pushes a placeable augment + logs', () => {

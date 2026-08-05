@@ -414,7 +414,7 @@ describe('computeAffordances — location interactions (§5.2)', () => {
 		expect(broken.noEffectNow).toBeUndefined();
 	});
 
-	test('a Mod Injector waives an augment trade (affordable with no relics held)', () => {
+	test('a Mod Injector still pays the normal augment-trade cost', () => {
 		const state = locationState([], {
 			spirits: [
 				{ slotIndex: 1, id: 'mi', name: 'Mod Injector', cost: 2, classes: { 'Mod Injector': 1 }, origins: {}, isFaceDown: false }
@@ -423,8 +423,8 @@ describe('computeAffordances — location interactions (§5.2)', () => {
 		const row1 = computeAffordances(state, 'Red', LOC_CATALOG).locationInteractions!.find(
 			(r) => r.rowIndex === 1
 		)!;
-		expect(row1.freeTrade).toBe('modInjector');
-		expect(row1.affordable).toBe(true);
+		expect(row1.freeTrade).toBeUndefined();
+		expect(row1.affordable).toBe(false);
 	});
 
 	test('absent outside the Location phase', () => {

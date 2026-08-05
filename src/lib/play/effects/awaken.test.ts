@@ -17,8 +17,7 @@ import {
 	payAwakenCondition,
 	canAutoAwaken,
 	needsManualAwaken,
-	buildAwakenOffer,
-	buildAwakenLockedOffer
+	buildAwakenOffer
 } from './awaken';
 import { CLASS_EFFECTS, MANUAL_CLASSES, type ClassEffect } from './registry';
 import { HANDLER_CLASSES } from './handlers';
@@ -26,8 +25,7 @@ import {
 	AWAKEN_HANDLERS,
 	AWAKEN_PROGRESS_KEYS,
 	AWAKEN_SPIRIT_IDS,
-	MANUAL_AWAKEN,
-	recordRestAwakenProgress
+	MANUAL_AWAKEN
 } from './awakenHandlers';
 import { applyCultivate } from './apply';
 import { createRng } from '../rng';
@@ -44,6 +42,7 @@ import type {
 	SeatColor
 } from '../types';
 import type { MatSlotSnapshot } from '$lib/types';
+import { CATALOG_CLASSES, CATALOG_SPIRITS } from './__fixtures__/catalog-coverage';
 
 const ANY_RELIC = '19d72567-4ac8-4214-a21f-596bc88de8f7';
 const ANY_RUNE = '7ca279f0-1ca8-484a-a86e-0a87aaa7b312';
@@ -1005,71 +1004,6 @@ function textCatalog(spiritId: string, name: string, text: string): PlayCatalog 
 }
 
 describe('AWAKEN_HANDLERS discard choice (let-me-choose)', () => {
-	it('Tidal Fairy offers both "X or Y" candidates and discards the chosen one', () => {
-		const sp = spirit(1, IDS.tidalFairy, 'Tidal Fairy');
-		// Both candidates are RELICS ("Discard a Fairy or Teapot Relic").
-		const player = makePlayer({
-			spirits: [sp],
-			mats: [relic(1, 'Fairy'), relic(2, 'Teapot')]
-		});
-		const handler = AWAKEN_HANDLERS[IDS.tidalFairy];
-		const choice = handler.discardChoice!(handlerCtx(player, sp));
-		expect(choice).not.toBeNull();
-		expect(choice!.count).toBe(1);
-		// Both the Fairy Relic and the Teapot Relic are offered (union of branches).
-		expect(choice!.options.map((o) => o.label).sort()).toEqual(['Fairy', 'Teapot']);
-
-		// Choose to spend the Teapot (held slot 2) → the Fairy Relic survives.
-		const payCtx = {
-			...handlerCtx(player, sp),
-			command: { type: 'awakenSpirit', slotIndex: 1, discardRefs: [{ kind: 'rune', slotIndex: 2 }] }
-		};
-		handler.pay(payCtx);
-		expect(player.mats.find((r) => r.name === 'Teapot')!.hasRune).toBe(false);
-		expect(player.mats.find((r) => r.name === 'Fairy')!.hasRune).toBe(true);
-	});
-
-	it('buildAwakenOffer surfaces the requirement text + candidate options', () => {
-		const sp = spirit(1, IDS.tidalFairy, 'Tidal Fairy');
-		const player = makePlayer({
-			spirits: [sp],
-			mats: [relic(1, 'Fairy'), relic(2, 'Teapot')]
-		});
-		const catalog = textCatalog(IDS.tidalFairy, 'Tidal Fairy', 'Discard a Fairy or Teapot Relic');
-		const ctx = buildEffectContext({
-			state: makeState(player),
-			seat: 'Red',
-			player,
-			trigger: 'awakening',
-			log: [],
-			traitCount: 0,
-			catalog
-		});
-		const offer = buildAwakenOffer(ctx, { spirit: sp });
-		expect(offer).not.toBeNull();
-		expect(offer!.spiritName).toBe('Tidal Fairy');
-		expect(offer!.requirement).toBe('Discard a Fairy or Teapot Relic');
-		expect(offer!.discardCount).toBe(1);
-		expect(offer!.options).toHaveLength(2);
-	});
-
-	it('an invalid selection falls back to auto-pick (still pays the cost)', () => {
-		const sp = spirit(1, IDS.tidalFairy, 'Tidal Fairy');
-		const player = makePlayer({ spirits: [sp], mats: [relic(1, 'Fairy')] });
-		const handler = AWAKEN_HANDLERS[IDS.tidalFairy];
-		const payCtx = {
-			...handlerCtx(player, sp),
-			command: {
-				type: 'awakenSpirit',
-				slotIndex: 1,
-				discardRefs: [{ kind: 'rune', slotIndex: 99 }]
-			}
-		};
-		handler.pay(payCtx);
-		// Bad ref ⇒ auto-pick the only valid candidate (the Fairy Relic) instead.
-		expect(player.mats.find((r) => r.name === 'Fairy')!.hasRune).toBe(false);
-	});
-
 	it('buildAwakenOffer lists the player spendable runes to choose which to spend', () => {
 		const sp = spirit(1, 'rc-spirit', 'Rune Cost Spirit');
 		const player = makePlayer({ spirits: [sp], mats: [rune(1, { id: FIRE_RUNE })] });
@@ -1189,48 +1123,6 @@ describe('AWAKEN_HANDLERS discard choice (let-me-choose)', () => {
 		expect(offer.requiresSelection).toBe(true);
 	});
 
-	// Discoverability: a Faerie the player CANNOT yet pay for produces no clickable
-	// offer, but DOES produce a passive locked hint spelling out what it needs — so
-	// the Cleanup UI can always show "Tidal Fairy — Discard 1 Fairy Rune or …".
-	it('buildAwakenLockedOffer surfaces the requirement when NOT yet payable', () => {
-		const sp = spirit(1, IDS.tidalFairy, 'Tidal Fairy');
-		// Holds neither a Fairy nor a Teapot relic → not awakenable.
-		const player = makePlayer({ spirits: [sp], mats: [relic(1, 'Keepsake')] });
-		const catalog = textCatalog(IDS.tidalFairy, 'Tidal Fairy', 'Discard a Fairy or Teapot Relic');
-		const ctx = buildEffectContext({
-			state: makeState(player),
-			seat: 'Red',
-			player,
-			trigger: 'awakening',
-			log: [],
-			traitCount: 0,
-			catalog
-		});
-		// No clickable offer (can't pay)…
-		expect(buildAwakenOffer(ctx, { spirit: sp })).toBeNull();
-		// …but a locked hint with the verbatim requirement.
-		const hint = buildAwakenLockedOffer(ctx, { spirit: sp });
-		expect(hint).not.toBeNull();
-		expect(hint!.spiritName).toBe('Tidal Fairy');
-		expect(hint!.requirement).toBe('Discard a Fairy or Teapot Relic');
-	});
-
-	it('buildAwakenLockedOffer returns null once the spirit IS payable (it gets a real offer)', () => {
-		const sp = spirit(1, IDS.tidalFairy, 'Tidal Fairy');
-		const player = makePlayer({ spirits: [sp], mats: [relic(2, 'Teapot')] });
-		const catalog = textCatalog(IDS.tidalFairy, 'Tidal Fairy', 'Discard a Fairy or Teapot Relic');
-		const ctx = buildEffectContext({
-			state: makeState(player),
-			seat: 'Red',
-			player,
-			trigger: 'awakening',
-			log: [],
-			traitCount: 0,
-			catalog
-		});
-		expect(buildAwakenOffer(ctx, { spirit: sp })).not.toBeNull();
-		expect(buildAwakenLockedOffer(ctx, { spirit: sp })).toBeNull();
-	});
 });
 
 describe('AWAKEN_HANDLERS discard-at-location', () => {
@@ -1264,30 +1156,6 @@ describe('AWAKEN_HANDLERS discard-at-location', () => {
 			spirits: [sp, { ...spirit(2, 'a1', 'Abyss 1', false), cost: 8 }] // only one other abyss spirit
 		});
 		expect(AWAKEN_HANDLERS[IDS.astrobiologist].check(handlerCtx(player, sp)).ok).toBe(false);
-	});
-
-	it('Floral Fairy: the "or" alternative (Flower Relic) satisfies, no location gate', () => {
-		const sp = spirit(1, IDS.floralFairy, 'Floral Fairy');
-		const player = makePlayer({
-			spirits: [sp],
-			// No navigationDestination — the DB condition has no location requirement.
-			mats: [relic(1, 'Flower Charm')] // a relic matching "Flower"
-		});
-		const handler = AWAKEN_HANDLERS[IDS.floralFairy];
-		const ctx = handlerCtx(player, sp);
-		expect(handler.check(ctx).ok).toBe(true);
-		handler.pay(ctx);
-		expect(player.mats[0].hasRune).toBe(false);
-	});
-
-	it('Floral Fairy: a Fairy Relic also satisfies (Fairy is a relic, not a rune)', () => {
-		const sp = spirit(1, IDS.floralFairy, 'Floral Fairy');
-		const player = makePlayer({ spirits: [sp], mats: [relic(1, 'Fairy')] });
-		const handler = AWAKEN_HANDLERS[IDS.floralFairy];
-		const ctx = handlerCtx(player, sp);
-		expect(handler.check(ctx).ok).toBe(true);
-		handler.pay(ctx);
-		expect(player.mats[0].hasRune).toBe(false);
 	});
 
 	it('Space Invader: needs 4 attack dice; pay discards exactly 4', () => {
@@ -1364,16 +1232,16 @@ describe('AWAKEN_HANDLERS discard-at-location', () => {
 		expect(result.state.players.Red!.spirits[0].isFaceDown).toBe(false);
 	});
 
-	it('awakenSpirit command flips a scripted text spirit and pays the cost (Blood Hound)', () => {
+	it('Meteor Shower discards two different relics and awakens', () => {
 		const catalog = textCatalog(
-			IDS.bloodHound,
-			'Blood Hound',
-			'Discard 1 relic with 2 or less barriers.'
+			IDS.meteorShower,
+			'Meteor Shower',
+			'Discard 2 unique relics.'
 		);
 		const state = startedGame(catalog);
 		const red = state.players.Red!;
-		red.spirits = [spirit(1, IDS.bloodHound, 'Blood Hound')];
-		red.mats = [relic(1, 'Teapot'), relic(2, 'Keepsake')];
+		red.spirits = [spirit(1, IDS.meteorShower, 'Meteor Shower')];
+		red.mats = [relic(1, 'Teapot'), relic(2, 'Keepsake'), relic(3, 'Teapot')];
 
 		const res = applyGameCommand(
 			state,
@@ -1386,20 +1254,20 @@ describe('AWAKEN_HANDLERS discard-at-location', () => {
 		const out = res.state.players.Red!;
 		expect(out.spirits[0].isFaceDown).toBe(false); // flipped, no manual prompt
 		expect(out.manualPrompts.filter((p) => p.source === 'awaken')).toHaveLength(0);
-		// Exactly one relic was spent to pay the cost.
+		// Exactly two differently named relics were spent; the duplicate stays.
 		expect(out.mats.filter((r) => r.hasRune).length).toBe(1);
 	});
 
-	it('awakenSpirit on an unsatisfiable scripted text spirit hard-blocks (no manual prompt)', () => {
+	it('Meteor Shower hard-blocks when the two relics are not unique', () => {
 		const catalog = textCatalog(
-			IDS.bloodHound,
-			'Blood Hound',
-			'Discard 1 relic with 2 or less barriers.'
+			IDS.meteorShower,
+			'Meteor Shower',
+			'Discard 2 unique relics.'
 		);
 		const state = startedGame(catalog);
 		const red = state.players.Red!;
-		red.spirits = [spirit(1, IDS.bloodHound, 'Blood Hound')];
-		red.mats = []; // no relic to discard → unsatisfiable
+		red.spirits = [spirit(1, IDS.meteorShower, 'Meteor Shower')];
+		red.mats = [relic(1, 'Teapot'), relic(2, 'Teapot')];
 
 		const res = applyGameCommand(
 			state,
@@ -1491,22 +1359,37 @@ describe('AWAKEN_HANDLERS alignment + cultivate (Contessa)', () => {
 	});
 });
 
-describe('AWAKEN_HANDLERS rest progress (Meteor Shower)', () => {
-	it('Meteor Shower: resting with ≥10 potential sets the flag → satisfiable', () => {
-		const meteor = spirit(1, IDS.meteorShower, 'Meteor Shower');
-		const actor = makePlayer({ playerColor: 'Red', maxBarrier: 10, spirits: [meteor] });
-		expect(AWAKEN_HANDLERS[IDS.meteorShower].check(handlerCtx(actor, meteor)).ok).toBe(false);
-		recordRestAwakenProgress(actor);
-		expect(actor.awakenProgress[AWAKEN_PROGRESS_KEYS.meteorShower]).toBe(true);
-		expect(AWAKEN_HANDLERS[IDS.meteorShower].check(handlerCtx(actor, meteor)).ok).toBe(true);
-	});
+describe('AWAKEN_HANDLERS unique-origin cultivate progress', () => {
+	const cases = [
+		[IDS.floralFairy, 'Floral Fairy', 'Floral Patch', AWAKEN_PROGRESS_KEYS.floralFairy],
+		[IDS.lanternFairy, 'Lantern Fairy', 'Lantern Lights', AWAKEN_PROGRESS_KEYS.lanternFairy],
+		[IDS.tidalFairy, 'Tidal Fairy', 'Moon Tide', AWAKEN_PROGRESS_KEYS.tidalFairy]
+	] as const;
 
-	it('Meteor Shower: resting with <10 potential does NOT set the flag', () => {
-		const meteor = spirit(1, IDS.meteorShower, 'Meteor Shower');
-		const actor = makePlayer({ playerColor: 'Red', maxBarrier: 9, spirits: [meteor] });
-		recordRestAwakenProgress(actor);
-		expect(actor.awakenProgress[AWAKEN_PROGRESS_KEYS.meteorShower]).toBeFalsy();
-	});
+	for (const [id, name, origin, progressKey] of cases) {
+		it(`${name}: cultivating with four unique ${origin} spirits sets the flag`, () => {
+			const fairy = { ...spirit(1, id, name), origins: { [origin]: 1 } };
+			const actor = makePlayer({
+				playerColor: 'Red',
+				spirits: [
+					fairy,
+					...Array.from({ length: 3 }, (_, index) => ({
+						...spirit(index + 2, `${origin}-${index}`, `${origin} ${index}`),
+						origins: { [origin]: 1 }
+					}))
+				]
+			});
+			const state = {
+				rng: createRng(1),
+				players: { Red: actor },
+				activeSeats: ['Red'] as SeatColor[]
+			} as unknown as PublicGameState;
+
+			applyCultivate(state, 'Red', []);
+			expect(actor.awakenProgress[progressKey]).toBe(true);
+			expect(AWAKEN_HANDLERS[id].check(handlerCtx(actor, fairy)).ok).toBe(true);
+		});
+	}
 });
 
 describe('combat-event awaken progress (Hollow Eyes)', () => {
@@ -1599,7 +1482,7 @@ describe('combat-event awaken progress (Hollow Eyes)', () => {
 		spirits: []
 	};
 
-	it('Hollow Eyes: dealing >3 damage to a player sets the flag → awaken satisfiable', () => {
+	it('Hollow Eyes: becoming corrupted in a failed player combat sets the flag', () => {
 		let state = startedPvpGame(2024);
 		state = intoEncounter(state, pvpCatalog);
 		expect(state.phase).toBe('encounter');
@@ -1610,7 +1493,8 @@ describe('combat-event awaken progress (Hollow Eyes)', () => {
 			instanceId: `d${i}`,
 			tier: 'arcane' as const
 		}));
-		red.spirits = [spirit(1, IDS.hollowEyes, 'Hollow Eyes')];
+		const blue = state.players.Blue!;
+		blue.spirits = [spirit(1, IDS.hollowEyes, 'Hollow Eyes')];
 
 		const res = applyGameCommand(
 			state,
@@ -1620,11 +1504,11 @@ describe('combat-event awaken progress (Hollow Eyes)', () => {
 		);
 		expect(res.ok).toBe(true);
 		if (!res.ok) throw new Error(res.error.message);
-		const outRed = res.state.players.Red!;
-		// >3 damage from 10 arcane dice (min face 1 ⇒ ≥10) → Hollow Eyes flag set.
-		expect(outRed.awakenProgress[AWAKEN_PROGRESS_KEYS.hollowEyes]).toBe(true);
+		const outBlue = res.state.players.Blue!;
+		// The defending player is corrupted without defeating the attacker.
+		expect(outBlue.awakenProgress[AWAKEN_PROGRESS_KEYS.hollowEyes]).toBe(true);
 		// And the scripted handler now reports satisfiable.
-		const ctx = handlerCtx(outRed, outRed.spirits[0]);
+		const ctx = handlerCtx(outBlue, outBlue.spirits[0]);
 		expect(AWAKEN_HANDLERS[IDS.hollowEyes].check(ctx).ok).toBe(true);
 	});
 
@@ -1638,7 +1522,8 @@ describe('combat-event awaken progress (Hollow Eyes)', () => {
 				instanceId: `d${i}`,
 				tier: 'basic' as const
 			}));
-			red.spirits = [spirit(1, IDS.hollowEyes, 'Hollow Eyes')];
+			const blue = state.players.Blue!;
+			blue.spirits = [spirit(1, IDS.hollowEyes, 'Hollow Eyes')];
 			const res = applyGameCommand(
 				state,
 				{ ...HOST, seatColor: 'Red' },
@@ -1646,7 +1531,7 @@ describe('combat-event awaken progress (Hollow Eyes)', () => {
 				pvpCatalog
 			);
 			if (!res.ok) throw new Error(res.error.message);
-			return res.state.players.Red!.awakenProgress[AWAKEN_PROGRESS_KEYS.hollowEyes] ?? false;
+			return res.state.players.Blue!.awakenProgress[AWAKEN_PROGRESS_KEYS.hollowEyes] ?? false;
 		};
 		expect(run()).toBe(run());
 	});
@@ -1905,7 +1790,9 @@ describe('Phase 6 interaction classes emit one manual prompt with DB text', () =
 // ── Coverage closure (Phase 6 → enables Phase 7) ──────────────────────────────
 
 describe('Phase 6 coverage closure', () => {
-	const TEXT_SPIRIT_IDS = Object.values(AWAKEN_SPIRIT_IDS);
+	const TEXT_SPIRIT_IDS = CATALOG_SPIRITS.filter(
+		(spirit) => spirit.awaken_condition?.type === 'text'
+	).map((spirit) => spirit.id);
 
 	it('every text spirit is scripted (AWAKEN_HANDLERS) or manual (MANUAL_AWAKEN)', () => {
 		for (const id of TEXT_SPIRIT_IDS) {
@@ -1937,46 +1824,7 @@ describe('Phase 6 coverage closure', () => {
 	});
 
 	it('every class in the game is encoded, handled, or allowlisted (no silent no-op)', () => {
-		// The full 37-class roster from the `classes` table (English names).
-		const ALL_CLASSES = [
-			'Abyss Summoner',
-			'Adaptive Fighter',
-			'Ancient Magus',
-			'Aquamaiden',
-			'Arc Mage',
-			'Arcane Advisor',
-			'Blood Hunter',
-			'Captain',
-			'Child Prodigy',
-			'Cursed Spirit',
-			'Dark Assassin',
-			'Dark Fighter',
-			'Deep Sea Hunter',
-			'Disruptor',
-			'Dragon Warrior',
-			'Elementalist',
-			'Cultivator',
-			'Fairy',
-			'Fairy Droid',
-			'Fighter',
-			'Firekeeper',
-			'Golden Ruler',
-			'Golem of Wishes',
-			'Healer',
-			'Infiltrator',
-			'Ironmane',
-			'Mod Injector',
-			'Purifier',
-			'Rune Mage',
-			'Sharpshooter',
-			'Soul Weaver',
-			'Spirit Animal',
-			'Strategist',
-			'The Corruptor',
-			'Undercover',
-			'World Ender',
-			'World Guardian'
-		];
+		const allClasses = CATALOG_CLASSES.map((row) => row.name);
 		// Classes handled by a dedicated ENGINE/runtime path rather than the effect
 		// system (declarative/handler/manual). Cursed Spirit's Awakening-Phase rewards
 		// are surfaced as a Cleanup CLAIM — `enterAwakening` (phases.ts) builds the
@@ -1986,13 +1834,14 @@ describe('Phase 6 coverage closure', () => {
 		const ENGINE_HANDLED_CLASSES = new Set<string>([
 			'Cursed Spirit',
 			'Golden Ruler',
+			'Soul Weaver',
 			'World Guardian',
 			// Infiltrator: standalone `infiltratorSwap` runtime action + swap UI.
 			'Infiltrator',
-			// Mod Injector: engine trade-cost waiver (free Spirit-Augment trades).
+			// Mod Injector: duplicates the selected augment after a paid trade.
 			'Mod Injector'
 		]);
-		for (const cls of ALL_CLASSES) {
+		for (const cls of allClasses) {
 			const handled =
 				Boolean(CLASS_EFFECTS[cls]) ||
 				HANDLER_CLASSES.has(cls) ||

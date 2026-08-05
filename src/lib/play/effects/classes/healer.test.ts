@@ -41,11 +41,11 @@ describe('Healer (onRest → 10-potential gated restore-3 + 1 VP decision)', () 
 		expect(player.pendingDecisions).toHaveLength(0);
 	});
 
-	it('exposes an onSpiritSummon breakpoint plus the bespoke onRest run handler', () => {
+	it('exposes an onSpiritDiscard breakpoint plus the bespoke onRest run handler', () => {
 		expect(ability).toHaveLength(2);
-		const summon = ability.find((a) => a.on === 'onSpiritSummon');
+		const discard = ability.find((a) => a.on === 'onSpiritDiscard');
 		const rest = ability.find((a) => a.on === 'onRest');
-		expect(summon?.breakpoints?.[0]).toMatchObject({
+		expect(discard?.breakpoints?.[0]).toMatchObject({
 			count: 1,
 			actions: [{ kind: 'restoreBarrier', amount: 2 }]
 		});
@@ -53,8 +53,8 @@ describe('Healer (onRest → 10-potential gated restore-3 + 1 VP decision)', () 
 		expect(rest?.breakpoints).toBeUndefined();
 	});
 
-	it('on summon restores 2 barrier (flips 2 broken-barrier tokens back)', () => {
-		const { player } = fire({ Healer: 1 }, 'onSpiritSummon', {
+	it('on discard restores 2 barrier (flips 2 broken-barrier tokens back)', () => {
+		const { player } = fire({ Healer: 1 }, 'onSpiritDiscard', {
 			player: { maxBarrier: 4, barrier: 0, brokenBarrier: 4 }
 		});
 		expect(player.barrier).toBe(2);

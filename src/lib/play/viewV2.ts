@@ -52,7 +52,6 @@ import {
 	type GainEffect,
 	type LocationInteraction
 } from './locationInteractions';
-import { awakenedClassCounts } from './effects/apply';
 
 /** The command discriminant, narrowed to the real GameCommand union — never a bare string. */
 export type GameCommandType = GameCommand['type'];
@@ -588,37 +587,6 @@ export function describePendingWork(
 /** Which item kinds a trade row grants (drives the free-trade waivers). Considers every
  *  option of an "or" gain, since any of them could be the chosen grant — an OPTIMISTIC
  *  read (like legalCommandTypes): the reducer re-checks against the actual choice. */
-function tradeGrantKinds(interaction: LocationInteraction): { augment: boolean; relic: boolean } {
-	let augment = false;
-	let relic = false;
-	for (const gain of interaction.gains) {
-		if (gain.type === 'rune') {
-			if (gain.rune.type === 'augment') augment = true;
-			if (gain.rune.type === 'relic') relic = true;
-		} else if (gain.type === 'chooseRune') {
-			for (const opt of gain.options) {
-				if (opt.type === 'augment') augment = true;
-				if (opt.type === 'relic') relic = true;
-			}
-		}
-	}
-	return { augment, relic };
-}
-
-/** The cost waiver in effect for a trade row, mirroring the reducer's Mod Injector /
- *  Undercover rules (runtime.ts resolveLocationInteraction). Undefined when the player pays. */
-function freeTradeFor(
-	interaction: LocationInteraction,
-	player: PrivatePlayerState,
-	classCounts: Record<string, number>
-): 'modInjector' | 'undercover' | undefined {
-	if (interaction.cost.length === 0) return undefined;
-	const { augment, relic } = tradeGrantKinds(interaction);
-	if ((classCounts['Mod Injector'] ?? 0) >= 1 && augment) return 'modInjector';
-	if (player.freeNextRelicTrade && relic) return 'undercover';
-	return undefined;
-}
-
 /** A row does nothing useful right now iff every gain is a barrier effect that is
  * already capped: restore at full current barrier, or max-barrier gain at the cap. */
 function interactionHasNoEffect(interaction: LocationInteraction, player: PrivatePlayerState): boolean {
@@ -649,7 +617,6 @@ export function computeLocationInteractions(
 
 	const mats = player.mats ?? [];
 	const rowAllowance = 1 + (player.extraActions?.locationInteraction ?? 0);
-	const classCounts = awakenedClassCounts(player);
 
 	return interactions.map((interaction) => {
 		const usedKey = `row:${interaction.rowIndex}`;
@@ -664,8 +631,7 @@ export function computeLocationInteractions(
 		const choiceGroups = interaction.gains
 			.filter((g): g is Extract<GainEffect, { type: 'chooseRune' }> => g.type === 'chooseRune')
 			.map((g) => ({ options: g.options.map((o) => ({ runeId: o.runeId, name: o.name })) }));
-		const freeTrade = freeTradeFor(interaction, player, classCounts);
-		const affordable = canAfford(interaction, mats) || freeTrade != null;
+		const affordable = canAfford(interaction, mats);
 		const noEffectNow = interactionHasNoEffect(interaction, player);
 
 		const repeatable = interaction.kind === 'trade';
@@ -678,7 +644,6 @@ export function computeLocationInteractions(
 				: Math.max(0, rowAllowance - rowUsed),
 			...(repeatable ? { repeatable: true } : {}),
 			affordable,
-			...(freeTrade ? { freeTrade } : {}),
 			costSlots,
 			choiceGroups,
 			...(noEffectNow ? { noEffectNow: true } : {})

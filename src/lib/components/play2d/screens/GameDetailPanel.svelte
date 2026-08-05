@@ -172,7 +172,7 @@
 							</div>
 							<div class="ps">
 								<span class="ps-num">{s.blood}</span>
-								<span class="ps-lbl">Blood</span>
+								<span class="ps-lbl">Broken Barrier</span>
 							</div>
 						</div>
 					</li>

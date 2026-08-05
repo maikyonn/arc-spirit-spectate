@@ -19,7 +19,7 @@
 
 	const vpIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.vp));
 	const barrierIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.barrier));
-	const brokenBarrierIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.blood));
+	const brokenBarrierIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.brokenBarrier));
 
 	const rows = $derived(
 		room.activeSeats

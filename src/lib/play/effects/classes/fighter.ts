@@ -10,7 +10,13 @@ export const ability: ClassAbility[] = [
 			{ count: 2, actions: [{ kind: 'gainAttackDice', tier: 'basic', amount: 1 }] },
 			{ count: 3, actions: [{ kind: 'gainAttackDice', tier: 'basic', amount: 2 }] },
 			{ count: 4, actions: [{ kind: 'gainAttackDice', tier: 'basic', amount: 5 }] },
-			{ count: 5, actions: [{ kind: 'gainAttackDice', tier: 'basic', amount: 10 }] }
+			{
+				count: 5,
+				actions: [
+					{ kind: 'gainAttackDice', tier: 'basic', amount: 10 },
+					{ kind: 'gainAugment', amount: 1 }
+				]
+			}
 		]
 	}
 ];

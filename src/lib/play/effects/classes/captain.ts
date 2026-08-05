@@ -13,4 +13,10 @@ const captainOnCultivate: ClassHandler = (ctx) => {
 	if (heroes >= 3) runAction(ctx, { kind: 'gainAugment', amount: 1 });
 };
 
-export const ability: ClassAbility[] = [{ on: 'onCultivate', run: captainOnCultivate }];
+export const ability: ClassAbility[] = [
+	{ on: 'onCultivate', run: captainOnCultivate },
+	{
+		on: 'onSpiritDiscard',
+		breakpoints: [{ count: 1, actions: [{ kind: 'gainAttackDice', tier: 'enchanted', amount: 1 }] }]
+	}
+];

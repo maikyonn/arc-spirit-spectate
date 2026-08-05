@@ -361,13 +361,13 @@
 			},
 			{
 				ids: ['80f1d5a8-812e-4bb2-b341-68e69d9a3e38'],
-				label: 'Arcane Blood',
+				label: 'Broken Barrier',
 				desc: 'Corrupted potential — health flipped to its dark side when you take damage.'
 			},
 			{
 				ids: ['36aab6c9-b98c-4e84-b097-e743f45dde82', '6a85e06a-52cc-483c-aa59-38395a377307'],
 				label: 'Runes & Relics',
-				desc: 'Tokens you spend to awaken your face-down spirits — each spirit lists a rune cost you pay from the runes you hold. You gain them off your location’s action cards, by Cultivating (1 rune for every 2 spirits sharing an origin), and from monster-kill rewards; you keep up to 4 between rounds (extras are discarded in Cleanup). Relics are the rarer “special” runes, used wherever an awaken cost calls for one.'
+				desc: 'Tokens you spend to awaken your face-down spirits — each spirit lists a rune cost you pay from the runes you hold. Cultivating grants 1 matching origin rune and restores 1 barrier for every pair of spirits sharing that origin. You keep up to 4 runes between rounds; relics are rarer special runes used by specific awaken costs.'
 			},
 			{
 				ids: [] as string[],
@@ -414,12 +414,12 @@
 			{
 				id: '60e40dd5-c3cc-4f26-9aa3-2043b4106ade',
 				label: 'Cultivate',
-				desc: 'Harvest runes from your spirits’ origins — gain 1 origin rune for every 2 spirits sharing a core origin. Also triggers Cultivate class effects (e.g. Cultivator: a same-origin trio → 2 runes + 1 potential).'
+				desc: 'For every pair of spirits sharing a core origin, gain 1 matching origin rune and restore 1 barrier. Then resolve Cultivate class abilities; Cultivator grants max barrier at 2/3/4/5 traits.'
 			},
 			{
 				id: 'bdded3f5-e405-4b68-b63a-9f5c2139beea',
 				label: 'Rest',
-				desc: 'Recover and grow — triggers your Rest class effects: gaining attack dice or potential, or upgrading your dice, depending on your classes.'
+				desc: 'Restore 2 barrier, then trigger all of your Rest class abilities.'
 			}
 		]
 			.map((e) => ({ ...e, url: iconPoolUrl(assets.iconPool, e.id) }))

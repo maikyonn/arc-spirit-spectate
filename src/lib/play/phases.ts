@@ -325,9 +325,9 @@ function collectBenefitGrants(player: PrivatePlayerState): AwakenGrant[] {
 		if (player.becameTaintedThisRound)
 			grants.push({ kind: 'taintedChoice', amount: cursed, source: 'Cursed Spirit' });
 		if (player.becameCorruptThisRound)
-			grants.push({ kind: 'relicChoice', amount: cursed, source: 'Cursed Spirit' });
+			grants.push({ kind: 'corruptChoice', amount: cursed, source: 'Cursed Spirit' });
 		if (player.becameFallenThisRound)
-			grants.push({ kind: 'augment', amount: cursed, source: 'Cursed Spirit' });
+			grants.push({ kind: 'fallenChoice', amount: cursed, source: 'Cursed Spirit' });
 	}
 	// Golden Ruler — +1 VP (the Evil self-discard penalty is applied on claim).
 	if ((counts['Golden Ruler'] ?? 0) >= 1) {

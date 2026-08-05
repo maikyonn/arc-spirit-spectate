@@ -29,7 +29,6 @@
 import { ALL_DESTINATIONS, isEvilAlignment, RUNE_CARRY_LIMIT } from './types';
 import type { GameActor, GameCommand, PlayCatalog, PrivatePlayerState, PublicGameState } from './types';
 import { buildLocationInteractions, matchRewardCost } from './locationInteractions';
-import { awakenedClassCounts } from './effects/apply';
 
 /** Pure mirror of activePlayerForActor's null-ness (no mutating ensurePlayerCollections backfill). */
 function seatPlayer(state: PublicGameState, actor: GameActor): PrivatePlayerState | null {
@@ -162,32 +161,9 @@ export function canApply(
 			if (!interaction) return false;
 			const usedForRow = (me.actionsUsedThisRound ?? []).filter((a) => a === `row:${command.rowIndex}`).length;
 			if (usedForRow >= 1 + (me.extraActions?.locationInteraction ?? 0)) return false;
-			// Affordability: only consulted when the row has a cost AND neither free-waiver applies.
+			// Affordability always follows the database-authored trade cost.
 			if (interaction.cost.length > 0) {
-				const counts = awakenedClassCounts(me);
-				// Scan gains to know whether this row grants a relic/augment (drives the waivers), walking
-				// the INDEPENDENT chooseRune cursor over command.choices exactly as the reducer does.
-				let waiverCursor = 0;
-				let grantsRelic = false;
-				let grantsAugment = false;
-				for (const gain of interaction.gains) {
-					const g = gain as { kind?: string; rune?: { type?: string }; options?: { type?: string }[] };
-					if (g.kind === 'rune') {
-						if (g.rune?.type === 'relic') grantsRelic = true;
-						if (g.rune?.type === 'augment') grantsAugment = true;
-					} else if (g.kind === 'chooseRune') {
-						const idx = command.choices?.[waiverCursor] ?? 0;
-						waiverCursor += 1;
-						const t = g.options?.[idx]?.type ?? g.options?.[0]?.type;
-						if (t === 'relic') grantsRelic = true;
-						if (t === 'augment') grantsAugment = true;
-					}
-				}
-				const modInjectorFree = (counts['Mod Injector'] ?? 0) >= 1 && grantsAugment;
-				const undercoverFree = !!me.freeNextRelicTrade && grantsRelic;
-				if (!modInjectorFree && !undercoverFree) {
-					if (!matchRewardCost(interaction.cost, me.mats, command.costChoices).ok) return false;
-				}
+				if (!matchRewardCost(interaction.cost, me.mats, command.costChoices).ok) return false;
 			}
 			return true;
 		}

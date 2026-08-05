@@ -317,18 +317,19 @@ describe('neural value action scoring', () => {
 		).toEqual([1, 4]);
 	});
 
-	it('enumerates every two-relic multiset reward choice', () => {
+	it('enumerates every split of a two-unit Corrupt Cursed Spirit reward', () => {
 		const state = atQuietLocation();
 		state.phase = 'benefits';
 		state.players.Red!.pendingAwakenReward = {
-			grants: [{ kind: 'relicChoice', amount: 2, source: 'Stellar Songbird' }]
+			grants: [{ kind: 'corruptChoice', amount: 2, source: 'Cursed Spirit' }]
 		};
 		const rewards = legalActions(state, 'Red', CATALOG).filter(
 			(command): command is Extract<GameCommand, { type: 'resolveAwakenReward' }> =>
 				command.type === 'resolveAwakenReward'
 		);
-		expect(rewards).toHaveLength(15); // C(5 + 2 - 1, 2)
-		expect(rewards.every((command) => command.relicPicks?.length === 2)).toBe(true);
+		expect(rewards).toHaveLength(3);
+		expect(rewards.map((command) => command.corruptMaxBarrier)).toEqual([0, 1, 2]);
+		expect(rewards.map((command) => command.corruptRunePicks?.length ?? 0)).toEqual([2, 1, 0]);
 	});
 
 	it('exposes every small monster reward pick combination to the ML candidate surface', () => {

@@ -13,7 +13,7 @@
 	import { RUNE_CARRY_LIMIT, isEvilAlignment } from '$lib/play/types';
 	import { SPIRIT_AUGMENT_CLASSES, isSpiritAugmentClass } from '$lib/play/augments';
 	import { getLocationConfig, LOCATION_ACCENT, splatFor } from '$lib/play/locations';
-	import { relicOptions } from '$lib/play/locationInteractions';
+	import { originRuneOptions } from '$lib/play/locationInteractions';
 	import { decisionPickerSpec } from '$lib/play/decisionPicker';
 	import type { getAssetState } from '$lib/stores/assetStore.svelte';
 	import { attackDieImageUrl, augmentIconForClass, runeIconUrl, seatAccent, spiritBackImageUrl, storageUrl } from './helpers';
@@ -89,11 +89,14 @@
 		onAttackGroup: () => void;
 		/** Hold/decline the encounter (an Evil decline cancels the group attack here). */
 		onPass: () => void;
-		/** Claim the Awakening-Phase rewards (Cleanup). `taintedPotential` = Cursed
-		 *  Spirit Tainted units taken as potential (rest Enchanted Attack); `relicPicks`
-		 *  = chosen relic index (into the 5 relics) per Cursed Spirit Corrupt unit. */
-		onClaimAwakenReward: (taintedPotential: number, relicPicks: number[]) => void;
-		/** Resolve an opt-in/choice ability card (Purifier class pick, etc.). */
+		/** Claim the Cursed Spirit corruption-stage choices during Benefits. */
+		onClaimAwakenReward: (
+			taintedPotential: number,
+			corruptPotential: number,
+			corruptRunePicks: number[],
+			fallenPotential: number
+		) => void;
+		/** Resolve an opt-in/choice class ability card. */
 		onResolveDecision: (
 			decisionId: string,
 			optionId: string,
@@ -214,12 +217,13 @@
 	const awakenReward = $derived(myPlayer?.pendingAwakenReward ?? null);
 	const grants = $derived<AwakenGrant[]>(awakenReward?.grants ?? []);
 	const taintedGrant = $derived(grants.find((g) => g.kind === 'taintedChoice') ?? null);
-	const relicGrant = $derived(grants.find((g) => g.kind === 'relicChoice') ?? null);
+	const corruptGrant = $derived(grants.find((g) => g.kind === 'corruptChoice') ?? null);
+	const fallenGrant = $derived(grants.find((g) => g.kind === 'fallenChoice') ?? null);
 	const fixedGrants = $derived(
 		grants.filter((g) => g.kind === 'vp' || g.kind === 'attackDice' || g.kind === 'augment')
 	);
-	const relicChoices = $derived(
-		relicOptions().map((r) => ({
+	const runeChoices = $derived(
+		originRuneOptions().map((r) => ({
 			name: r.name,
 			icon: storageUrl(assets.matAssets.get(r.runeId)?.icon_path ?? null)
 		}))
@@ -237,13 +241,17 @@
 	// start EMPTY — claiming is disabled until every unit has an explicit choice,
 	// so a default relic is never silently taken.
 	let taintedSeg = $state<boolean[]>([]); // true = Potential, false = Enchanted Attack
-	let relicPicks = $state<(number | null)[]>([]);
+	let corruptSeg = $state<boolean[]>([]); // true = Potential, false = Rune
+	let corruptRunePicks = $state<(number | null)[]>([]);
+	let fallenSeg = $state<boolean[]>([]); // true = Potential, false = Augment
 	let hadAwakenReward = false;
 	$effect(() => {
 		const has = !!awakenReward;
 		if (has && !hadAwakenReward) {
 			taintedSeg = Array.from({ length: taintedGrant?.amount ?? 0 }, () => false);
-			relicPicks = Array.from({ length: relicGrant?.amount ?? 0 }, () => null);
+			corruptSeg = Array.from({ length: corruptGrant?.amount ?? 0 }, () => false);
+			corruptRunePicks = Array.from({ length: corruptGrant?.amount ?? 0 }, () => null);
+			fallenSeg = Array.from({ length: fallenGrant?.amount ?? 0 }, () => false);
 		}
 		hadAwakenReward = has;
 	});
@@ -253,10 +261,18 @@
 	function toggleTaintedSeg(i: number) {
 		taintedSeg = taintedSeg.map((v, k) => (k === i ? !v : v));
 	}
-	function pickRelic(unit: number, choice: number) {
-		relicPicks = relicPicks.map((v, i) => (i === unit ? choice : v));
+	function toggleCorruptSeg(i: number) {
+		corruptSeg = corruptSeg.map((v, k) => (k === i ? !v : v));
 	}
-	const relicPicksComplete = $derived(relicPicks.every((p) => p !== null));
+	function pickCorruptRune(unit: number, choice: number) {
+		corruptRunePicks = corruptRunePicks.map((v, i) => (i === unit ? choice : v));
+	}
+	function toggleFallenSeg(i: number) {
+		fallenSeg = fallenSeg.map((v, k) => (k === i ? !v : v));
+	}
+	const corruptPicksComplete = $derived(
+		corruptRunePicks.every((pick, i) => corruptSeg[i] || pick !== null)
+	);
 	const potentialIcon = $derived(iconPoolUrl(assets.iconPool, RESOURCE_ICON_IDS.barrier));
 	function classIconFor(className: string): string | null {
 		for (const cls of assets.classTraits.values()) {
@@ -265,18 +281,22 @@
 		return null;
 	}
 	function claimBenefits() {
-		if (busy || !relicPicksComplete) return;
+		if (busy || !corruptPicksComplete) return;
 		onClaimAwakenReward(
 			taintedPotentialClamped,
-			relicPicks.map((p) => p ?? 0)
+			corruptSeg.filter(Boolean).length,
+			corruptRunePicks.filter((pick, i): pick is number => !corruptSeg[i] && pick !== null),
+			fallenSeg.filter(Boolean).length
 		);
 	}
 	const claimSummary = $derived.by(() => {
 		const parts: string[] = [];
 		if (taintedGrant) parts.push(`${taintedPotentialClamped} Potential · ${taintedEnchanted} Enchanted`);
-		if (relicGrant) {
-			const picked = relicPicks.filter((p) => p !== null).length;
-			parts.push(`${picked}/${relicPicks.length} relic${relicPicks.length === 1 ? '' : 's'} chosen`);
+		if (corruptGrant) {
+			parts.push(`${corruptSeg.filter(Boolean).length} Potential · ${corruptSeg.filter((v) => !v).length} Runes`);
+		}
+		if (fallenGrant) {
+			parts.push(`${fallenSeg.filter(Boolean).length} Potential · ${fallenSeg.filter((v) => !v).length} Augments`);
 		}
 		return parts.join(' — ') || null;
 	});
@@ -1223,7 +1243,7 @@
 										</span>
 									</section>
 								{/if}
-								{#if relicGrant}
+								{#if corruptGrant}
 									<section class="grant-card choice-card relic-card">
 										<span class="grant-art">
 											{#if classIconFor('Cursed Spirit')}<img
@@ -1234,29 +1254,41 @@
 										<span class="grant-body">
 											<span class="grant-source">Cursed Spirit · Corrupt</span>
 											<span class="grant-what"
-												>Choose {relicGrant.amount} relic{relicGrant.amount === 1 ? '' : 's'} — one per
-												row.</span
+												>For each Cursed Spirit, choose 1 Potential or 1 basic Rune.</span
 											>
-											<div class="relic-rows" data-testid="claim-relic-picks">
-												{#each relicPicks as pick, unit (unit)}
-													<div class="relic-row" class:done={pick !== null}>
+											<div class="relic-rows" data-testid="claim-corrupt-picks">
+												{#each corruptRunePicks as pick, unit (unit)}
+													<div class="relic-row" class:done={corruptSeg[unit] || pick !== null}>
 														<span class="relic-row-tag">{unit + 1}</span>
-														<CandidateRack
-															size="md"
-															candidates={relicChoices.map((rc, ri) => ({
-																key: String(ri),
-																label: rc.name,
-																image: rc.icon,
-																count: 1,
-																selected: pick === ri ? 1 : 0,
-																eligible: true
-															}))}
-															onTap={(key) => pickRelic(unit, Number(key))}
-															disabled={busy}
-															testidPrefix={`claim-relic-${unit}`}
-															ariaLabel={`Choose relic ${unit + 1}`}
-														/>
+														<button type="button" class="tainted-seg" class:potential={corruptSeg[unit]}
+															onclick={() => toggleCorruptSeg(unit)} disabled={busy}>
+															<span class="seg-label">{corruptSeg[unit] ? 'Potential' : 'Rune'}</span>
+														</button>
+														{#if !corruptSeg[unit]}
+															<CandidateRack size="md" candidates={runeChoices.map((rc, ri) => ({
+																key: String(ri), label: rc.name, image: rc.icon, count: 1,
+																selected: pick === ri ? 1 : 0, eligible: true
+															}))} onTap={(key) => pickCorruptRune(unit, Number(key))} disabled={busy}
+																testidPrefix={`claim-rune-${unit}`} ariaLabel={`Choose rune ${unit + 1}`} />
+														{/if}
 													</div>
+												{/each}
+											</div>
+										</span>
+									</section>
+								{/if}
+								{#if fallenGrant}
+									<section class="grant-card choice-card">
+										<span class="grant-art"><span class="grant-fb">✦</span></span>
+										<span class="grant-body">
+											<span class="grant-source">Cursed Spirit · Fallen</span>
+											<span class="grant-what">For each Cursed Spirit, choose 1 Potential or 1 Spirit Augment.</span>
+											<div class="tainted-row" role="group" aria-label="Split fallen units">
+												{#each fallenSeg as seg, i (i)}
+													<button type="button" class="tainted-seg" class:potential={seg} disabled={busy}
+														onclick={() => toggleFallenSeg(i)}>
+														<span class="seg-label">{seg ? 'Potential' : 'Augment'}</span>
+													</button>
 												{/each}
 											</div>
 										</span>
@@ -1265,9 +1297,9 @@
 							</div>
 							<CommitBar
 								summary={claimSummary}
-								warning={relicGrant && !relicPicksComplete ? 'Pick your relics to claim' : null}
+								warning={corruptGrant && !corruptPicksComplete ? 'Pick a rune for each Rune choice' : null}
 								confirmLabel="Claim rewards"
-								confirmDisabled={!relicPicksComplete}
+								confirmDisabled={!corruptPicksComplete}
 								confirmTestid="awaken-claim-btn"
 								onConfirm={claimBenefits}
 								{busy}

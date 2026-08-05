@@ -43,7 +43,7 @@
 			return 'ward';
 		if (/(upgraded|combat damage|gained \d+ potential|gained \+|initiative|extra .* action|augment|are doubled|redraw|gained [^.]*attack dice)/.test(l))
 			return 'upgrade';
-		if (/(attacks for|were corrupted|cannot strike back|flipped [^.]*arcane blood|barrier lost|^corrupted)/.test(l))
+		if (/(attacks for|were corrupted|cannot strike back|flipped [^.]*broken barrier|barrier lost|^corrupted)/.test(l))
 			return 'harm';
 		if (/(you roll [^.]*damage|defeated|horde is exhausted)/.test(l)) return 'strike';
 		if (/(gained|restored|purified|cultivated|\brested\b|victory point|\bvp\b|claim)/.test(l)) return 'gain';

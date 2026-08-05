@@ -924,9 +924,20 @@
 	}
 	// Claim the Cursed Spirit Awakening-Phase rewards (Cleanup). `taintedMaxBarrier` =
 	// units of the Tainted line taken as potential (the rest become Enchanted Attack).
-	function claimAwakenReward(taintedMaxBarrier: number, relicPicks: number[]) {
+	function claimAwakenReward(
+		taintedMaxBarrier: number,
+		corruptMaxBarrier: number,
+		corruptRunePicks: number[],
+		fallenMaxBarrier: number
+	) {
 		playSfx('reward-pick');
-		send('awaken-reward', { type: 'resolveAwakenReward', taintedMaxBarrier, relicPicks });
+		send('awaken-reward', {
+			type: 'resolveAwakenReward',
+			taintedMaxBarrier,
+			corruptMaxBarrier,
+			corruptRunePicks,
+			fallenMaxBarrier
+		});
 	}
 
 	// Held runes/relics over the carry limit must be discarded before cleanup can end.

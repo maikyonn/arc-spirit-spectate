@@ -22,6 +22,7 @@ import { nextInt, nextId } from './rng';
 import { applyTrigger, awakenedClassCounts } from './effects/apply';
 import { applyStatusChange } from './effects/status';
 import type { EffectCombatInfo } from './effects/context';
+import { AWAKEN_PROGRESS_KEYS } from './effects/awakenHandlers';
 
 /**
  * Per-combat effect flags that class effects (`inCombat`/`onTakeDamage`) set and
@@ -56,7 +57,7 @@ export function resetCombatFlags(player: PrivatePlayerState): void {
 
 /**
  * "Your side may always attack at the same time as the enemy." Granted by an awakened
- * Sharpshooter (count ≥1) or Soul Weaver (count ≥2). A player with this strikes
+ * Sharpshooter (count ≥1) or Soul Weaver (count ≥3). A player with this strikes
  * SIMULTANEOUSLY — a corrupting/zero-barrier hit cannot suppress their attack — so they
  * still roll and deal (and can kill with) their damage. Detected from awakened class counts
  * rather than the per-combat `stunImmune` flag, because Soul Weaver grants it on rest and
@@ -64,7 +65,7 @@ export function resetCombatFlags(player: PrivatePlayerState): void {
  */
 function hasSimultaneousAttack(player: PrivatePlayerState): boolean {
 	const c = awakenedClassCounts(player);
-	return (c['Sharpshooter'] ?? 0) >= 1 || (c['Soul Weaver'] ?? 0) >= 2;
+	return (c['Sharpshooter'] ?? 0) >= 1 || (c['Soul Weaver'] ?? 0) >= 3;
 }
 
 /**
@@ -193,6 +194,15 @@ export function takeDamage(
 		// remainder. This is the single corruption site for combat.
 		player.barrier = player.maxBarrier;
 		player.brokenBarrier = 0;
+		// Soul Weaver II: after corruption restores barrier to full, gain 2 potential.
+		// The new capacity begins broken, preserving the ordering stated by the ability.
+		if ((awakenedClassCounts(player)['Soul Weaver'] ?? 0) >= 2) {
+			const before = player.maxBarrier;
+			player.maxBarrier = Math.min(10, player.maxBarrier + 2);
+			player.brokenBarrier = player.maxBarrier - player.barrier;
+			const gained = player.maxBarrier - before;
+			if (gained > 0) log?.push(`Soul Weaver: gained ${gained} max barrier after corruption.`);
+		}
 		player.corruptionCount = (player.corruptionCount ?? 0) + 1;
 		const vpCharged = setCorruptionDiscardObligation(player, undefined, {
 			wasFallen: oldStatus === STATUS_LADDER.length - 1
@@ -297,10 +307,12 @@ export function resolveEncounterCombat(
 	// change with no explanation (PvE already threads its real log into inCombat).
 	const log: string[] = [];
 	for (const { player } of [...evil, ...good]) resetCombatFlags(player);
-	// onPlayerInteraction fires for each Evil aggressor BEFORE the exchange (e.g.
-	// Infiltrator's pre-combat dice swap), threaded the representative Good opponent.
+	// Every participant encounters an opposing player before the exchange. Effects
+	// such as Infiltrator and Undercover receive a representative opposing seat.
 	for (const { seat } of evil)
 		applyTrigger(state, seat, 'onPlayerInteraction', log, { catalog, opponent: repGood });
+	for (const { seat } of good)
+		applyTrigger(state, seat, 'onPlayerInteraction', log, { catalog, opponent: repEvil });
 	for (const { seat } of evil) applyTrigger(state, seat, 'inCombat', log, { catalog, opponent: repGood });
 	for (const { seat } of good) applyTrigger(state, seat, 'inCombat', log, { catalog, opponent: repEvil });
 
@@ -484,6 +496,11 @@ export function fightMonster(
 	//    behind `killed`.
 	const endingHp = Math.max(0, monster.maxHp - playerDamage - deflected);
 	const killed = endingHp <= 0;
+	if (corrupted) {
+		player.awakenProgress ??= {};
+		player.awakenProgress[AWAKEN_PROGRESS_KEYS.cosmicGuardian] = true;
+		if (!killed) player.awakenProgress[AWAKEN_PROGRESS_KEYS.hollowEyes] = true;
+	}
 	const vpGained = 0; // VP now comes from the reward selection, not a flat kill bonus.
 	if (killed) {
 		log.push(`${monster.name} defeated! Claim your rewards.`);

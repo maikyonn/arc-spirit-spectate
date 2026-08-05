@@ -70,7 +70,7 @@ server-authoritative rules engine, each covered by automated tests. Code must be
 ## Known risks
 
 - DB `description_translations`/`count_translations` are mojibake for unrelated effects — encode ONLY from English `description`.
-- ~10 classes gate to MANUAL for missing primitives (Arcane Blood, Relic-vs-rune, Spirit Augment, Stun, Hero trait, Origin-Location typing, explicit Awakening Phase).
+- ~10 classes gate to MANUAL for missing primitives (Broken Barrier, Relic-vs-rune, Spirit Augment, Stun, Hero trait, Origin-Location typing, explicit Awakening Phase).
 - `1+` multiplier must not regress the numeric breakpoint path (Fighter/Enchanter/Elementalist).
 - Co-located/multi-player effects (Healer/Rune Traveler/Infiltrator) must stay order-stable + only touch active seats.
 - No real Awakening Phase — fold Awakening-Phase effects into `enterCleanup`; ensure status changes resolve before VP win-cons and `findWinner` runs after.

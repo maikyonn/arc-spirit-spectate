@@ -16,7 +16,7 @@ import { applyGameCommand, applyDeadlineAdvance } from '../runtime';
 import { canApply } from '../legality';
 import { createRng, nextInt, type RngState } from '../rng';
 import { getLocationConfig } from '../locations';
-import { augmentCapacityForSpirit } from '../augments';
+import { ownerAugmentCapacity } from '../augments';
 import {
 	buildLocationInteractions,
 	canAfford,
@@ -226,7 +226,7 @@ function hasAugmentCapacity(player: BotPlayer): boolean {
 		const placed = (player.spiritAugmentAttachments ?? []).filter(
 			(a) => a.spiritSlotIndex === s.slotIndex && typeof a.className === 'string'
 		).length;
-		return placed < augmentCapacityForSpirit(s);
+		return placed < ownerAugmentCapacity(player, s);
 	});
 }
 
@@ -2092,7 +2092,7 @@ export function planMediumPhaseActions(
 								const placed = (p.spiritAugmentAttachments ?? []).filter(
 									(a) => a.spiritSlotIndex === s.slotIndex && typeof a.className === 'string'
 								).length;
-								return placed < augmentCapacityForSpirit(s);
+								return placed < ownerAugmentCapacity(p, s);
 							})
 							.sort((a, b) => keepValue(b, p, profile, focus) - keepValue(a, p, profile, focus))[0];
 						if (!target) {
@@ -2186,7 +2186,12 @@ export function planMediumPhaseActions(
 				// augment are auto-granted regardless of this choice.
 				const cp = working.players[seat];
 				const wantMaxBarrier = cp && cp.maxBarrier < profile.maxBarrierTarget ? 99 : 0;
-				tryEmit({ type: 'resolveAwakenReward', taintedMaxBarrier: wantMaxBarrier, relicPicks: [] });
+				tryEmit({
+					type: 'resolveAwakenReward',
+					taintedMaxBarrier: wantMaxBarrier,
+					corruptMaxBarrier: wantMaxBarrier,
+					fallenMaxBarrier: wantMaxBarrier
+				});
 			}
 			tryEmit({ type: 'commitBenefits' });
 			break;
@@ -2765,7 +2770,12 @@ export function planBotPhaseActions(
 				// augment are auto-granted regardless of this choice.
 				const cp = working.players[seat];
 				const wantMaxBarrier = cp && cp.maxBarrier < profile.maxBarrierTarget ? 99 : 0;
-				tryEmit({ type: 'resolveAwakenReward', taintedMaxBarrier: wantMaxBarrier, relicPicks: [] });
+				tryEmit({
+					type: 'resolveAwakenReward',
+					taintedMaxBarrier: wantMaxBarrier,
+					corruptMaxBarrier: wantMaxBarrier,
+					fallenMaxBarrier: wantMaxBarrier
+				});
 			}
 			tryEmit({ type: 'commitBenefits' });
 			break;

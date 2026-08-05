@@ -15,7 +15,6 @@
 		meaningFor,
 		type LocationInteraction
 	} from '$lib/play/locationInteractions';
-	import { awakenedClassCounts } from '$lib/play/effects/apply';
 	import type { getAssetState } from '$lib/stores/assetStore.svelte';
 	import type { SeatAffordances } from '$lib/play/viewV2';
 	import { runeIconUrl, storageUrl } from './helpers';
@@ -110,37 +109,13 @@
 	function usedCount(interaction: LocationInteraction): number {
 		return usedRows.filter((a) => a === `row:${interaction.rowIndex}`).length;
 	}
-	// A trade whose cost is WAIVED for this player. The engine affordance names the
-	// waiver; the fallback mirrors the runtime waiver exactly as before:
-	//   • Mod Injector — any Spirit-Augment trade is free while awakened.
-	//   • Undercover — the player's next rune→relic trade is free (one-shot flag).
-	function freeTrade(interaction: LocationInteraction): boolean {
-		const aff = rowAffordances.get(interaction.rowIndex);
-		if (aff?.freeTrade) return true;
-		if (!player || interaction.cost.length === 0) return false;
-		let grantsAugment = false;
-		let grantsRelic = false;
-		for (const g of interaction.gains) {
-			if (g.type === 'rune') {
-				if (g.rune.type === 'augment') grantsAugment = true;
-				if (g.rune.type === 'relic') grantsRelic = true;
-			} else if (g.type === 'chooseRune') {
-				// Any option counting keeps the waiver visible before the player picks.
-				for (const opt of g.options) {
-					if (opt.type === 'augment') grantsAugment = true;
-					if (opt.type === 'relic') grantsRelic = true;
-				}
-			}
-		}
-		const modInjectorFree =
-			(awakenedClassCounts(player)['Mod Injector'] ?? 0) >= 1 && grantsAugment;
-		const undercoverFree = !!player.freeNextRelicTrade && grantsRelic;
-		return modInjectorFree || undercoverFree;
+	function freeTrade(_interaction: LocationInteraction): boolean {
+		return false;
 	}
 	function affordable(interaction: LocationInteraction): boolean {
 		const aff = rowAffordances.get(interaction.rowIndex);
-		if (aff) return aff.affordable || !!aff.freeTrade;
-		return freeTrade(interaction) || canAfford(interaction, player?.mats ?? []);
+		if (aff) return aff.affordable;
+		return canAfford(interaction, player?.mats ?? []);
 	}
 	function noEffectNow(interaction: LocationInteraction): boolean {
 		return rowAffordances.get(interaction.rowIndex)?.noEffectNow ?? false;

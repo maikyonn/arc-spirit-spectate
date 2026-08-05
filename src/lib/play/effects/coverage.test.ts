@@ -175,9 +175,10 @@ const ENGINE_HANDLED_CLASSES = new Set<string>([
 	// Infiltrator is a standalone runtime action (`infiltratorSwap` command + swap UI),
 	// not a trigger effect — handled by the engine, no declarative/handler entry.
 	'Infiltrator',
-	// Mod Injector is an engine trade-cost waiver (free Spirit-Augment trades),
-	// applied in resolveLocationInteraction — no effect-system entry.
+		// Mod Injector duplicates the exact augment gained by a paid trade in the
+		// interaction reducer, so it has no effect-system entry.
 	'Mod Injector'
+	,'Soul Weaver'
 ]);
 const ALL_SPIRITS = CATALOG_SPIRITS;
 const RUNE_COST_SPIRITS = ALL_SPIRITS.filter((s) => s.awaken_condition?.type === 'rune_cost');
@@ -256,7 +257,7 @@ describe('Phase 7 — awaken coverage (every spirit is handled)', () => {
 		expect(FREE_SPIRITS.length + RUNE_COST_SPIRITS.length + TEXT_SPIRITS.length).toBe(
 			ALL_SPIRITS.length
 		);
-		expect(ALL_SPIRITS.length).toBe(61);
+		expect(ALL_SPIRITS.length).toBe(50);
 	});
 
 	it('a null awaken_condition normalizes to a free flip (ok:true)', () => {

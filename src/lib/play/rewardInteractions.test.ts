@@ -327,40 +327,29 @@ describe('bots resolve location interactions', () => {
 	});
 });
 
-describe('trade-cost waivers (Mod Injector / Undercover)', () => {
-	test('Mod Injector: an augment trade is FREE while awakened — even with no runes to pay', () => {
+describe('updated trade class rules', () => {
+	test('Mod Injector pays the trade cost and gains two copies of the selected augment', () => {
 		let s = atLocation('Cyber City');
-		// An awakened Mod Injector, and NO held runes/relics → the augment trade would
-		// normally be unpayable; the waiver is the only way it can resolve.
 		s.players.Red!.spirits = [
 			{ slotIndex: 1, id: 'mod', name: 'Mole', cost: 2, classes: { 'Mod Injector': 1 }, origins: {}, isFaceDown: false }
 		];
-		s.players.Red!.mats = [];
+		s.players.Red!.mats = [
+			{ slotIndex: 1, hasRune: true, id: 'fairy', name: 'Fairy Relic', type: 'relic', special: true }
+		];
 
 		s = apply(s, RED, { type: 'resolveLocationInteraction', rowIndex: 0, choices: [1] }); // pick Strategist augment
 
-		// The augment was granted (lands in the to-place pouch) and NOTHING was consumed.
-		expect(s.players.Red!.unplacedAugments?.some((a) => a.name === 'Strategist')).toBe(true);
+		expect(s.players.Red!.unplacedAugments?.filter((a) => a.name === 'Strategist')).toHaveLength(2);
 		expect(s.players.Red!.mats.filter((r) => r.hasRune).length).toBe(0);
 		expect(s.players.Red!.lastAction?.log.some((l) => /Mod Injector/i.test(l))).toBe(true);
 	});
 
-	test('Undercover: the next rune→relic trade is FREE (one-shot) and clears the flag', () => {
+	test('the obsolete Undercover free-trade flag no longer waives a cost', () => {
 		let s = atLocation('Tidal Cove');
-		// Arm the one-shot waiver (as the Undercover awakening does) and strip runes so
-		// the TIDAL,TIDAL cost can't be paid normally — the waiver is the only path.
 		s.players.Red!.freeNextRelicTrade = true;
 		s.players.Red!.mats = [];
-
-		s = apply(s, RED, { type: 'resolveLocationInteraction', rowIndex: 2, choices: [] }); // TIDAL,TIDAL → Teapot relic
-
-		// Got the Teapot relic for free; the one-shot flag is now spent.
-		expect(s.players.Red!.mats.some((r) => r.hasRune && r.name === 'Teapot')).toBe(true);
-		expect(s.players.Red!.freeNextRelicTrade).toBe(false);
-		expect(s.players.Red!.lastAction?.log.some((l) => /Undercover/i.test(l))).toBe(true);
-
-		// A SECOND relic trade is no longer free — with no runes it now fails.
-		const again = applyGameCommand(s, RED, { type: 'resolveLocationInteraction', rowIndex: 2, choices: [] }, CATALOG);
-		expect(again.ok).toBe(false);
+		const result = applyGameCommand(s, RED, { type: 'resolveLocationInteraction', rowIndex: 2, choices: [] }, CATALOG);
+		expect(result.ok).toBe(false);
+		expect(s.players.Red!.freeNextRelicTrade).toBe(true);
 	});
 });

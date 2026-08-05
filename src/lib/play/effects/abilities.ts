@@ -34,7 +34,7 @@ import * as undercover from './classes/undercover';
 import * as cursedSpirit from './classes/cursedSpirit';
 import * as theCorruptor from './classes/theCorruptor';
 import * as arcaneAdvisor from './classes/arcaneAdvisor';
-import * as purifier from './classes/purifier';
+import * as treeOfGrowth from './classes/treeOfGrowth';
 import * as strategist from './classes/strategist';
 import * as arcMage from './classes/arcMage';
 import * as captain from './classes/captain';
@@ -77,7 +77,7 @@ const MODULES: Record<string, ClassModule> = {
 	'Cursed Spirit': cursedSpirit,
 	'The Corruptor': theCorruptor,
 	'Arcane Advisor': arcaneAdvisor,
-	Purifier: purifier,
+	'Tree of Growth': treeOfGrowth,
 	Strategist: strategist,
 	'Arc Mage': arcMage,
 	Captain: captain,

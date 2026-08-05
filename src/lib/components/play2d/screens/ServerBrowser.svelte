@@ -170,7 +170,7 @@
 
 	// ── Dev-only: spawn straight into the Awakening phase to test ability UX ──────
 	const DEBUG_CLASSES = [
-		'Purifier',
+		'Tree of Growth',
 		'Infiltrator',
 		'Fairy',
 		'Sharpshooter',

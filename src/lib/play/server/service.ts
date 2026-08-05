@@ -1510,35 +1510,14 @@ function grantAwakenRunes(player: PrivatePlayerState, awaken: NormalizedAwaken |
 	}
 }
 
-/** Place a face-up spirit carrying `className` (a prerequisite target, e.g. the
- *  Purifier's Cursed Spirit). No-op when the catalog has none. */
-function seedFaceUpSpiritWithClass(
-	catalog: PlayCatalog,
-	player: PrivatePlayerState,
-	className: string,
-	slotIndex: number
-): void {
-	const spirit = catalog.spirits.find((s) => (s.classes?.[className] ?? 0) > 0);
-	if (!spirit) return;
-	player.spirits.push({
-		slotIndex,
-		id: spirit.id,
-		name: spirit.name,
-		cost: spirit.cost,
-		classes: spirit.classes,
-		origins: spirit.origins,
-		isFaceDown: false
-	});
-}
-
 /**
  * Make a face-down `text`-awaken test spirit genuinely awakenable via its REAL
  * condition (so the debug game exercises the actual awaken path, not a shortcut):
- *   - progress-flag conditions (cultivate/rest/combat events) → set the flag so the
+ *   - progress-flag conditions (cultivate/combat/navigation events) → set the flag so the
  *     handler's `check` passes and `pay` consumes it on awaken;
  *   - "Discard N of any attack dice" (Space Invader) → grant enough attack dice;
  *   - "Discard N Arcane Abyss Spirits" → seed N spare cost 7–9 spirits to discard;
- *   - relic-discard Faeries / Blood Hound → satisfied by the two starting Fairy Relics.
+ *   - unique-relic costs → satisfied by distinct starting relics.
  * No-op for `rune_cost` (handled by grantAwakenRunes) and free flips.
  */
 function satisfyAwakenCondition(
@@ -1688,8 +1667,8 @@ export async function createDebugRoom(
 		state = result.state;
 	}
 
-	// 3. Inject the test scenario: a face-down spirit of the class under test +
-	//    the runes to awaken it + a Cursed Spirit prerequisite for any class.
+	// 3. Inject the test scenario: a face-down spirit of the class under test plus
+	//    the resources needed to awaken it.
 	const player = state.players[seat];
 	if (!player) throw kitError(500, 'Debug seed produced no player.');
 	const usedSlots = new Set(player.spirits.map((s) => s.slotIndex));
@@ -1715,12 +1694,6 @@ export async function createDebugRoom(
 	});
 	grantAwakenRunes(player, testSpirit.awaken);
 	satisfyAwakenCondition(state, player, catalog, testSpirit, nextSlot);
-	// Purifier needs a summoned Cursed Spirit as its ability target; add one if a slot
-	// is free and the test spirit isn't itself a Cursed Spirit.
-	if ((testSpirit.classes?.['Cursed Spirit'] ?? 0) === 0) {
-		const csSlot = nextSlot();
-		if (csSlot !== null) seedFaceUpSpiritWithClass(catalog, player, 'Cursed Spirit', csSlot);
-	}
 	player.spirits.sort((a, b) => a.slotIndex - b.slotIndex);
 
 	// 4. Land directly on the Awakening step (run Benefits first so the awakeningPhase

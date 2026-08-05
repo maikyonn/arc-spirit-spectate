@@ -43,7 +43,7 @@
 	}
 
 	interface Props {
-		type: 'victoryPoints' | 'blood' | 'barrier' | 'barrierGained';
+		type: 'victoryPoints' | 'brokenBarrier' | 'barrier' | 'barrierGained';
 		data: GraphDataPoint[];
 		currentRound: number;
 		onRoundClick?: (round: number) => void;
@@ -58,8 +58,8 @@
 	const chartTitle = $derived(
 		type === 'victoryPoints'
 			? 'Victory Points'
-			: type === 'blood'
-				? 'Arcane Blood'
+			: type === 'brokenBarrier'
+				? 'Broken Barrier'
 				: type === 'barrierGained'
 					? 'Total Barrier Gained'
 					: 'Barrier'
@@ -115,7 +115,7 @@
 				playerData = data.map((round) => {
 					const player = round.players.find((p) => p.color === color);
 					if (!player) return null;
-					if (type === 'blood') return player.blood;
+					if (type === 'brokenBarrier') return player.blood;
 					if (type === 'victoryPoints') return player.victoryPoints;
 					return player.barrier;
 				});
@@ -267,8 +267,8 @@
 								const label = context.dataset.label ?? '';
 								const value = context.parsed.y;
 								const unit =
-									type === 'blood'
-										? ' blood'
+									type === 'brokenBarrier'
+										? ' broken barrier'
 										: type === 'victoryPoints'
 											? ' VP'
 											: type === 'barrierGained'

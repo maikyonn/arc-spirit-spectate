@@ -1,6 +1,6 @@
 import type { ClassAbility } from './types';
 
-// Sharpshooter — DB-intended: "On summon, gain 1 Enchanted Attack. Your side may
+// Sharpshooter — DB-intended: "When discarded, gain 1 Enchanted Attack. Your side may
 // always attack at the same time as the enemy."
 //
 // The simultaneous-attack rule lives in combat.ts (`hasSimultaneousAttack`), which
@@ -10,11 +10,11 @@ import type { ClassAbility } from './types';
 // and backstops the simultaneous-strike intent.
 export const ability: ClassAbility[] = [
 	{
-		on: 'onSpiritSummon',
+		on: 'onSpiritDiscard',
 		breakpoints: [
 			{
 				count: 1,
-				actions: [{ kind: 'gainAttackDice', tier: 'enchanted', amount: 1 }, { kind: 'setStunImmune' }]
+				actions: [{ kind: 'gainAttackDice', tier: 'enchanted', amount: 1 }]
 			}
 		]
 	}

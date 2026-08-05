@@ -53,11 +53,8 @@ export type EffectAction =
 	| { kind: 'combatBonus'; amount: number }
 	| { kind: 'gainAugment'; amount: number }
 	| { kind: 'gainRelic'; amount: number }
-	/**
-	 * Purify broken barrier. A fixed `amount`, or `fraction: 'halfRoundUp'` to
-	 * remove half the current broken barrier rounded up (Purifier's rest effect).
-	 */
-	| { kind: 'purifyArcaneBlood'; amount?: number; fraction?: 'halfRoundUp' }
+	/** Restore broken barrier. A fixed amount, or half rounded up. */
+	| { kind: 'restoreBrokenBarrier'; amount?: number; fraction?: 'halfRoundUp' }
 	// ── P3 kinds (Rest / Cultivate coverage) ────────────────────────────────
 	/** Set the passive stun-immunity flag (Soul Weaver). */
 	| { kind: 'setStunImmune' }
@@ -72,7 +69,7 @@ export type EffectAction =
 	 * is computed at trigger time from the live pool, so it can't be expressed
 	 * with the static `combatBonus` amount.
 	 */
-	| { kind: 'combatBonusFromArcaneBlood'; max: number }
+	| { kind: 'combatBonusFromBrokenBarrier'; max: number }
 	// ── P5 kinds (trigger-wiring + win-con coverage) ─────────────────────────
 	/**
 	 * Set the per-turn rune-doubling flag (Rune Traveler). When `includeColocated`
@@ -168,10 +165,6 @@ export const CLASS_EFFECTS: Record<string, ClassEffect[]> = Object.fromEntries(
  * built-in UX (no manual prompts). Kept as an exported set so the coverage harness
  * and runtime share one allowlist; the `manual` action kind remains available for
  * forward-compat but is unused.
- *
- * The last holdout, Purifier ("place 2 augments on each Cursed Spirit"), now grants
- * placeable Spirit Augments (restricted to Cursed Spirit hosts) that the player places
- * with the standard in-stage Augment-placement UX — see classes/purifier.ts.
  */
 export const MANUAL_CLASSES = new Set<string>([]);
 

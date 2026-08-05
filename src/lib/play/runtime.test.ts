@@ -1331,12 +1331,12 @@ describe('play runtime', () => {
 		expect(state.players.Red!.spirits.some((s) => s.slotIndex === target.slotIndex)).toBe(true);
 	});
 
-	test('adjustBarrier / adjustBrokenBarrier keep arcane blood === maxTokens − barrier', () => {
+	test('adjustBarrier / adjustBrokenBarrier keep broken barrier === maxTokens − barrier', () => {
 		const lobby = withLobbySelections();
 		const started = applyGameCommand(lobby, { ...HOST, seatColor: 'Red' }, { type: 'startGame' }, CATALOG);
 		if (!started.ok) throw new Error(started.error.message);
 
-		// Lower health → arcane blood (the corrupted side) appears; invariant must hold.
+		// Lower health → broken barrier appears; invariant must hold.
 		let s = applyGameCommand(
 			started.state,
 			{ ...HOST, seatColor: 'Red' },
@@ -1349,7 +1349,7 @@ describe('play runtime', () => {
 		expect(p.brokenBarrier).toBe(p.maxBarrier - p.barrier);
 		expect(p.brokenBarrier).toBeGreaterThan(0);
 
-		// Bump arcane blood directly → the health side re-derives, invariant still holds.
+		// Bump broken barrier directly → the health side re-derives, invariant still holds.
 		s = applyGameCommand(s.state, { ...HOST, seatColor: 'Red' }, { type: 'adjustBrokenBarrier', amount: 1 }, CATALOG);
 		expect(s.ok).toBe(true);
 		if (!s.ok) return;
@@ -1469,7 +1469,7 @@ describe('P5 onSpiritSummon wiring', () => {
 	const SHARP = { id: 'spirit-sharp', name: 'Sniper', cost: 2, classes: { Sharpshooter: 1 }, origins: {} };
 	const sharpCatalog: PlayCatalog = { ...CATALOG, spirits: [...CATALOG.spirits, SHARP] };
 
-	test('spawnHandSpirit fires onSpiritSummon scoped to the summoned spirit (Sharpshooter)', () => {
+	test('summoning Sharpshooter does not grant its discard-only reward', () => {
 		const lobby = withLobbySelections();
 		const started = applyGameCommand(lobby, { ...HOST, seatColor: 'Red' }, { type: 'startGame' }, sharpCatalog);
 		if (!started.ok) throw new Error(started.error.message);
@@ -1489,7 +1489,7 @@ describe('P5 onSpiritSummon wiring', () => {
 		if (!summoned.ok) throw new Error(summoned.error.message);
 		state = summoned.state;
 
-		expect(state.players.Red!.stunImmune).toBe(true);
+		expect(state.players.Red!.stunImmune).toBe(false);
 	});
 
 	test('summoning a NON-Sharpshooter does not fire the Sharpshooter grant (per-spirit scope)', () => {
@@ -1696,11 +1696,17 @@ describe('Cursed Spirit cleanup claim flow', () => {
 		origins: {},
 		isFaceDown: false
 	});
-	const claim = (state: PublicGameState, taintedMaxBarrier?: number, relicPicks?: number[]) =>
+	const claim = (
+		state: PublicGameState,
+		taintedMaxBarrier = 0,
+		corruptRunePicks: number[] = [],
+		corruptMaxBarrier = 0,
+		fallenMaxBarrier = 0
+	) =>
 		applyGameCommand(
 			state,
 			{ ...HOST, seatColor: 'Red' },
-			{ type: 'resolveAwakenReward', taintedMaxBarrier, relicPicks },
+			{ type: 'resolveAwakenReward', taintedMaxBarrier, corruptMaxBarrier, corruptRunePicks, fallenMaxBarrier },
 			CATALOG
 		);
 	const classSpirit = (cls: string, n = 1, slotIndex = 5) => ({
@@ -1732,8 +1738,8 @@ describe('Cursed Spirit cleanup claim flow', () => {
 		state.players.Red!.becameCorruptThisRound = true;
 		enterBenefits(state, CATALOG);
 		const grants = state.players.Red!.pendingAwakenReward!.grants;
-		expect(grants.map((g) => g.kind)).toEqual(['taintedChoice', 'relicChoice']);
-		expect(grants.find((g) => g.kind === 'relicChoice')).toMatchObject({ amount: 1 });
+		expect(grants.map((g) => g.kind)).toEqual(['taintedChoice', 'corruptChoice']);
+		expect(grants.find((g) => g.kind === 'corruptChoice')).toMatchObject({ amount: 1 });
 	});
 
 	test('no Cursed Spirit, or no stage crossed this round → no pending claim', () => {
@@ -1862,17 +1868,18 @@ describe('Cursed Spirit cleanup claim flow', () => {
 		expect(grants.some((g) => g.source === 'World Ender')).toBe(false);
 	});
 
-	test('Cursed Spirit relic choice grants the PICKED relics, not generic', () => {
+	test('Cursed Spirit Corrupt choice grants the picked basic runes', () => {
 		const state = started();
 		state.players.Red!.spirits = [cursedSpirit(2)];
 		state.players.Red!.becameCorruptThisRound = true;
 		enterBenefits(state, CATALOG);
 		const before = state.players.Red!.mats.length;
-		const r = claim(state, 0, [2, 0]); // unit0 → Firecracker (idx 2), unit1 → Fairy (idx 0)
+		const r = claim(state, 0, [2, 0]);
 		if (!r.ok) throw new Error(r.error.message);
 		const p = r.state.players.Red!;
-		expect(p.relics).toBe(2);
-		expect(p.mats.slice(before).map((x) => x.name)).toEqual(['Firecracker Relic', 'Fairy Relic']);
+		expect(p.relics).toBe(0);
+		expect(p.mats.slice(before).map((x) => x.name)).toHaveLength(2);
+		expect(p.mats.slice(before).every((x) => x.type === 'rune')).toBe(true);
 	});
 });
 
