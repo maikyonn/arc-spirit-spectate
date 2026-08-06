@@ -197,7 +197,7 @@ describe('Cultivate action (intrinsic origin-rune yield)', () => {
 	// Origin keys are origin DISPLAY NAMES (e.g. "Floral Patch"), as built by the catalog
 	// loader. The basic rune for the Floral Patch origin is displayed as "Forest", but its
 	// resolved slot name is "<Origin> Rune" → "Floral Patch Rune".
-	it('grants 1 origin rune and restores 1 barrier for every same-origin pair', () => {
+	it('grants 1 origin rune without restoring barriers', () => {
 		const p = makePlayer({
 			maxBarrier: 4,
 			barrier: 2,
@@ -209,8 +209,8 @@ describe('Cultivate action (intrinsic origin-rune yield)', () => {
 		});
 		applyCultivate(makeState(p), 'Red', []);
 		expect(p.mats.filter((r) => r.name === 'Floral Patch Rune')).toHaveLength(1);
-		expect(p.barrier).toBe(3);
-		expect(p.brokenBarrier).toBe(1);
+		expect(p.barrier).toBe(2);
+		expect(p.brokenBarrier).toBe(2);
 		expect(p.maxBarrier).toBe(4); // no Cultivator → no potential
 	});
 
@@ -260,8 +260,8 @@ describe('Cultivate action (intrinsic origin-rune yield)', () => {
 		});
 		applyCultivate(makeState(p), 'Red', []);
 		expect(p.mats.filter((r) => r.name === 'Floral Patch Rune')).toHaveLength(2);
-		expect(p.barrier).toBe(3);
-		expect(p.brokenBarrier).toBe(1);
+		expect(p.barrier).toBe(1);
+		expect(p.brokenBarrier).toBe(3);
 	});
 
 	it('grants one rune PER origin (two Floral Patch + two Lantern Lights → one each)', () => {
@@ -663,9 +663,9 @@ describe('doubleRunes primitive (Cultivate yield)', () => {
 		});
 		applyCultivate(makeState(p), 'Red', []);
 		expect(p.mats.filter((r) => r.name === 'Floral Patch Rune')).toHaveLength(4); // floor(4/2)=2 → doubled
-		// Rune doubling does not double pair-based barrier restoration.
-		expect(p.barrier).toBe(3);
-		expect(p.brokenBarrier).toBe(1);
+		// Cultivate does not restore barriers, even when rune yield is doubled.
+		expect(p.barrier).toBe(1);
+		expect(p.brokenBarrier).toBe(3);
 	});
 });
 

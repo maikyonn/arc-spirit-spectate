@@ -177,8 +177,8 @@ export function applyRest(
 }
 
 /**
- * Cultivate grants one origin rune and restores one barrier for every pair of
- * same-origin spirit traits. Its class payoff remains separate: the Cultivator
+ * Cultivate grants one origin rune for every pair of same-origin spirit traits.
+ * Its class payoff remains separate: the Cultivator
  * trigger grants max barrier on the 2/3/4/5 → +1/+2/+5/+10 ladder, while Arc
  * Mage, Captain, and other classes hook into the same `onCultivate` event.
  *
@@ -203,11 +203,11 @@ export function applyCultivate(
 	recordCultivateAwakenProgress(player, allPlayers);
 
 	// Intrinsic Cultivate yield (every player, no class required): gain ONE origin rune
-	// and restore ONE barrier for every TWO spirit origin traits sharing that origin.
+	// for every TWO spirit origin traits sharing that origin.
 	// Awakened and face-down spirits both count (origin is always active; only class
 	// abilities need awakening). Only the four core origins with a basic rune (Cyber
 	// City / Floral Patch / Lantern Lights / Moon Tide) produce pairs. Rune Traveler's
-	// per-turn `doubleRunes` doubles only the rune yield, never barrier restoration.
+	// per-turn `doubleRunes` doubles the rune yield.
 	const originTraits: Record<string, number> = {};
 	for (const spirit of player.spirits) {
 		for (const [origin, n] of Object.entries(spirit.origins ?? {})) {
@@ -215,12 +215,10 @@ export function applyCultivate(
 		}
 	}
 	const runeMult = player.doubleRunes ? 2 : 1;
-	let originPairs = 0;
 	for (const [origin, traits] of Object.entries(originTraits)) {
 		const rune = originRuneForName(origin);
 		if (!rune) continue;
 		const pairs = Math.floor(traits / 2);
-		originPairs += pairs;
 		const count = pairs * runeMult;
 		for (let i = 0; i < count; i += 1) {
 			player.mats.push({
@@ -236,14 +234,6 @@ export function applyCultivate(
 		}
 		if (count > 0) log.push(`Cultivated ${count} ${rune.name}${count === 1 ? '' : 's'}.`);
 	}
-	if (originPairs > 0) {
-		const before = player.barrier;
-		player.barrier = Math.min(player.maxBarrier, player.barrier + originPairs);
-		player.brokenBarrier = Math.max(0, player.maxBarrier - player.barrier);
-		const restored = player.barrier - before;
-		if (restored > 0) log.push(`Cultivate restored ${restored} barrier.`);
-	}
-
 	// Class-hook dispatch: fire onCultivate class effects for the acting seat.
 	applyTrigger(state, seat, 'onCultivate', log, opts);
 }

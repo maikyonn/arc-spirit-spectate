@@ -177,9 +177,9 @@ describe('resolveLocationInteraction (engine)', () => {
 		expect(s.players.Red!.mats.filter((r) => r.hasRune).length).toBe(2);
 	});
 
-	test('Cultivate grants runes and restores one barrier per same-origin pair', () => {
+	test('Cultivate grants runes without restoring barriers', () => {
 		let s = atLocation('Lantern Canyon');
-		// Four Floral Patch spirits → two pairs → two runes and two restored barrier.
+		// Four Floral Patch spirits → two pairs → two runes and no barrier restoration.
 		s.players.Red!.barrier = Math.max(0, s.players.Red!.maxBarrier - 3);
 		s.players.Red!.brokenBarrier = s.players.Red!.maxBarrier - s.players.Red!.barrier;
 		const beforeBarrier = s.players.Red!.barrier;
@@ -192,7 +192,7 @@ describe('resolveLocationInteraction (engine)', () => {
 		s = apply(s, RED, { type: 'resolveLocationInteraction', rowIndex: 0, choices: [] });
 		const forestRunes = s.players.Red!.mats.filter((r) => r.name === 'Floral Patch Rune' && r.hasRune);
 		expect(forestRunes).toHaveLength(2);
-		expect(s.players.Red!.barrier).toBe(beforeBarrier + 2);
+		expect(s.players.Red!.barrier).toBe(beforeBarrier);
 		expect(s.players.Red!.brokenBarrier).toBe(s.players.Red!.maxBarrier - s.players.Red!.barrier);
 	});
 
